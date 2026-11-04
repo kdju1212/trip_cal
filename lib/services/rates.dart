@@ -31,7 +31,9 @@ class RateService {
   final http.Client client;
   final _inflight = <String, Future<RateQuote>>{};
   Future<RateQuote?> cached(String code) async {
-    if (code == 'KRW') { return const RateQuote('KRW', '1', '', 'KRW'); }
+    if (code == 'KRW') {
+      return const RateQuote('KRW', '1', '', 'KRW');
+    }
     final rows = await storage.db.query(
       'rates',
       where: 'currency = ?',
@@ -41,8 +43,9 @@ class RateService {
   }
 
   Future<RateQuote> latest(String code) {
-    if (code == 'KRW')
-      { return Future.value(const RateQuote('KRW', '1', '', 'KRW')); }
+    if (code == 'KRW') {
+      return Future.value(const RateQuote('KRW', '1', '', 'KRW'));
+    }
     return _inflight.putIfAbsent(
       code,
       () => _fetch(code).whenComplete(() {
@@ -56,27 +59,35 @@ class RateService {
       final response = await client
           .get(Uri.https('api.frankfurter.dev', '/v2/rate/$code/KRW'))
           .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) { throw const FormatException('환율 응답 오류'); }
+      if (response.statusCode != 200) {
+        throw const FormatException('환율 응답 오류');
+      }
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      if (body['base'] != code || body['quote'] != 'KRW')
-        { throw const FormatException('통화 불일치'); }
+      if (body['base'] != code || body['quote'] != 'KRW') {
+        throw const FormatException('통화 불일치');
+      }
       // Preserve the numeric JSON token instead of passing money through double.
       final token = RegExp(
         r'"rate"\s*:\s*(\d+(?:\.\d+)?)(?=\s*[,}])',
       ).firstMatch(response.body);
-      if (token == null) { throw const FormatException('환율 숫자 형식 오류'); }
+      if (token == null) {
+        throw const FormatException('환율 숫자 형식 오류');
+      }
       final rate = token.group(1)!;
       _validateRate(rate);
       final date = body['date'] as String;
       if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date) ||
-          DateTime.tryParse(date) == null)
-        { throw const FormatException('날짜 오류'); }
+          DateTime.tryParse(date) == null) {
+        throw const FormatException('날짜 오류');
+      }
       final quote = RateQuote(code, rate, date, 'Frankfurter');
       await _save(quote);
       return quote;
     } catch (_) {
       final saved = await cached(code);
-      if (saved != null) { return saved; }
+      if (saved != null) {
+        return saved;
+      }
       throw const FormatException(
         '환율을 가져오지 못했어요. 인터넷 연결을 확인하거나 환율을 직접 입력해 주세요.',
       );

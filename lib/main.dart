@@ -51,7 +51,9 @@ class _TripAppState extends State<TripApp> with WidgetsBindingObserver {
     widget.app.notifications.onOpen = openTrip;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final id = await widget.app.notifications.initialTrip();
-      if (id != null && mounted) { openTrip(id); }
+      if (id != null && mounted) {
+        openTrip(id);
+      }
       unawaited(AdsService.initialize());
     });
   }
@@ -64,7 +66,9 @@ class _TripAppState extends State<TripApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) { unawaited(widget.app.changed()); }
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.app.changed());
+    }
   }
 
   @override

@@ -11,9 +11,18 @@
 
 GitHub Actions는 Flutter 3.47.9 / JDK 17에서 `flutter pub get`, `flutter analyze`, `flutter test --reporter expanded`, debug/release-mode 테스트 APK 빌드를 실행합니다. 실제 실행 결과는 Actions 로그를 기준으로 판단해야 합니다.
 
-1차 검증 커밋 `8377455`: [Actions 실행 41837597482](https://github.com/kdju1212/trip_cal/actions/runs/41837597482)에서 정적 분석(오류/경고 없음, 스타일 권고 포함), 자동 테스트 **24개 통과**, debug APK와 release 모드 테스트 APK 생성에 성공했습니다. 이후 스타일 권고를 정리하고 큰 금액 사용률 표시 회귀 테스트를 추가한 최종 검증을 진행합니다. 새로운 최종 APK는 ABI별로 분리해 제공합니다.
+최종 검증 커밋 `ce1acc8b77cf77571f46ee5fea09ecdad14c6212`: [Actions 실행 41839359570](https://github.com/kdju1212/trip_cal/actions/runs/41839359570) **성공**.
 
-로컬 소스는 CI에서 `dart format`으로 정리한 결과를 반영합니다. 서명은 debug 테스트 키이며 Play에 게시하지 않았습니다.
+- `flutter analyze`: **No issues found** (오류·경고·스타일 권고 없음)
+- `flutter test --reporter expanded`: **25개 모두 통과**
+- Android debug APK 생성 성공
+- release 모드 테스트 APK 3종 생성 성공: ARM 32비트 20.0MB, arm64 22.3MB, x86_64 23.9MB
+- [arm64 APK artifact](https://github.com/kdju1212/trip_cal/actions/runs/41839359570/artifacts/13327139778), [전체 APK artifact](https://github.com/kdju1212/trip_cal/actions/runs/41839359570/artifacts/13328099755)
+
+설치 파일 로컬 경로: `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`. 빌드 출처와 SHA-256은 `docs/BUILD_INFO.json`에 기록했습니다. 기본 APK와 ABI별 APK는 테스트용 debug 서명이며 광고는 테스트 ID입니다. Play 게시를 수행하지 않았습니다.
+
+최종 로컬 소스는 이 실행에서 실제 분석·테스트·빌드한 `dart format` 출력과 동일한 파일을 반영했습니다. 검증 커밋과 토큰 동등성도 확인했습니다. 이후 커밋은 이 포맷 출력 및 검증 기록만 반영하며 CI 재실행을 생략합니다.
+
 
 테스트 범위: 도메인 혼합 통화 예시(900,000원/남은 1,100,000원), 반올림/음수/0환율/통화 소수 자릿수/큰 금액, D-day/미정/지난 날짜, 통화 연결, DB CRUD/복제/격리/cascade/체크 상태/재연결/v1 마이그레이션, API 응답/캐시/오프라인/수동/중복 요청/저장된 경비 불변/재계산 중복 방지, 출발일 없는 여행 생성/국가 검색/작은 화면/다크모드/차트, 알림 설정 MethodChannel 계약.
 

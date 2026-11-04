@@ -29,10 +29,12 @@ class _TipsScreenState extends State<TipsScreen> {
     body: FutureBuilder<Map<String, dynamic>>(
       future: data,
       builder: (context, snapshot) {
-        if (snapshot.hasError)
-          { return const Center(child: Text('여행 정보를 불러오지 못했어요.')); }
-        if (!snapshot.hasData)
-          { return const Center(child: CircularProgressIndicator()); }
+        if (snapshot.hasError) {
+          return const Center(child: Text('여행 정보를 불러오지 못했어요.'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final info = snapshot.data!;
         return ListView(
           padding: const EdgeInsets.all(20),
@@ -122,10 +124,12 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     body: FutureBuilder<List<DbRow>>(
       future: data,
       builder: (context, snapshot) {
-        if (snapshot.hasError)
-          { return const Center(child: Text('구매 선택을 불러오지 못했어요.')); }
-        if (!snapshot.hasData)
-          { return const Center(child: CircularProgressIndicator()); }
+        if (snapshot.hasError) {
+          return const Center(child: Text('구매 선택을 불러오지 못했어요.'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final domestic = widget.trip['country'] == 'KR';
         final needed = {
           for (final e in snapshot.data!) e['item']: e['needed'] == 1,
@@ -160,7 +164,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                             'item': id,
                             'needed': v == true ? 1 : 0,
                           }, conflictAlgorithm: ConflictAlgorithm.replace);
-                          if (mounted) { setState(() => data = load()); }
+                          if (mounted) {
+                            setState(() => data = load());
+                          }
                         });
                       },
                     ),

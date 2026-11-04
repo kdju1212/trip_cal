@@ -30,16 +30,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final list = (await s.trips())
           .where((v) => notificationEligible(v, DateTime.now()))
           .toList();
-      if (mounted)
-        { setState(() {
+      if (mounted) {
+        setState(() {
           enabled = e;
           remaining = r;
           selected = list.any((e) => e['id'] == t) ? t : 0;
           trips = list;
           loaded = true;
-        }); }
+        });
+      }
     } catch (_) {
-      if (mounted) { message(context, '설정을 불러오지 못했어요.'); }
+      if (mounted) {
+        message(context, '설정을 불러오지 못했어요.');
+      }
     }
   }
 
@@ -51,16 +54,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => busy = true);
     await guarded(context, () async {
       if (value && !await widget.app.notifications.requestPermission()) {
-        if (mounted) { message(context, '알림 권한이 필요해요. 기기 설정에서 허용해 주세요.'); }
+        if (mounted) {
+          message(context, '알림 권한이 필요해요. 기기 설정에서 허용해 주세요.');
+        }
         return;
       }
       await widget.app.store.setSetting('notificationEnabled', value);
       await widget.app.store.setSetting('notificationTrip', selected);
       await widget.app.store.setSetting('notificationRemaining', remaining);
       await widget.app.notifications.sync();
-      if (mounted) { setState(() => enabled = value); }
+      if (mounted) {
+        setState(() => enabled = value);
+      }
     });
-    if (mounted) { setState(() => busy = false); }
+    if (mounted) {
+      setState(() => busy = false);
+    }
   }
 
   Future<void> notificationOptions() async {
@@ -95,8 +104,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   DropdownMenuItem(value: ThemeMode.dark, child: Text('다크 모드')),
                 ],
                 onChanged: (mode) {
-                  if (mode != null)
-                    { guarded(context, () => widget.app.setTheme(mode)); }
+                  if (mode != null) {
+                    guarded(context, () => widget.app.setTheme(mode));
+                  }
                 },
               ),
               const SectionTitle('출발일 D-day 알림'),
@@ -177,11 +187,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: const Icon(Icons.privacy_tip_outlined),
                       onTap: () async {
                         final shown = await AdsService.privacyOptions();
-                        if (context.mounted && !shown)
-                          { message(
+                        if (context.mounted && !shown) {
+                          message(
                             context,
                             '현재 표시할 광고 동의 양식이 없어요. 광고 설정은 동의 상태에 따릅니다.',
-                          ); }
+                          );
+                        }
                       },
                     ),
                     ListTile(

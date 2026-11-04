@@ -16,28 +16,34 @@ class _AdBannerState extends State<AdBanner> {
     super.initState();
     AdsService.allowed.addListener(update);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) { update(); }
+      if (mounted) {
+        update();
+      }
     });
   }
 
   void update() {
-    if (!mounted) { return; }
+    if (!mounted) {
+      return;
+    }
     if (!AdsService.allowed.value) {
       ad?.dispose();
       ad = null;
       setState(() => loaded = false);
       return;
     }
-    if (ad != null) { return; }
+    if (ad != null) {
+      return;
+    }
     final banner = BannerAd(
       size: AdSize.banner,
       adUnitId: AdsService.bannerId,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (value) {
-          if (mounted && identical(value, ad))
-            { setState(() => loaded = true); }
-          else {
+          if (mounted && identical(value, ad)) {
+            setState(() => loaded = true);
+          } else {
             value.dispose();
           }
         },

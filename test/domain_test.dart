@@ -78,5 +78,4 @@ void main() {
     expect(budgetUsagePercent(BigInt.from(2000000), BigInt.one), '200000000.0');
     expect(budgetUsagePercent(BigInt.zero, BigInt.zero), '—');
   });
-
 }

@@ -30,7 +30,9 @@ class _TripDetailState extends State<TripDetail> {
 
   void reload() {
     data = load();
-    if (mounted) { setState(() {}); }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<(DbRow?, List<DbRow>)> load() async {
@@ -67,15 +69,20 @@ class _TripDetailState extends State<TripDetail> {
         '여행을 삭제할까요?',
         '경비, 준비물과 구매 안내 선택이 함께 삭제됩니다. 복구할 수 없어요.',
         action: '삭제',
-      ))
-        { return; }
-      if (!mounted) { return; }
+      )) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
       final result = await guarded(context, () async {
         await widget.app.store.deleteTrip(widget.tripId);
         await widget.app.changed();
         return true;
       });
-      if (mounted && result == true) { Navigator.pop(context); }
+      if (mounted && result == true) {
+        Navigator.pop(context);
+      }
     }
     if (action == 'copy' && mounted) {
       final copied = await guarded(context, () async {
@@ -83,7 +90,9 @@ class _TripDetailState extends State<TripDetail> {
         await widget.app.changed();
         return true;
       });
-      if (mounted && copied == true) { message(context, '여행 목록에 복사본을 만들었어요.'); }
+      if (mounted && copied == true) {
+        message(context, '여행 목록에 복사본을 만들었어요.');
+      }
     }
   }
 
@@ -123,25 +132,36 @@ class _TripDetailState extends State<TripDetail> {
                 '${q.currency}: ${q.rate}원 · ${q.date} · ${q.source}${q.cached ? ' (저장된 환율)' : ''}',
           )
           .join('\n');
-      if (!mounted) { return; }
+      if (!mounted) {
+        return;
+      }
       if (!await confirm(
         context,
         '환율 재계산 미리보기',
         '외화 경비 합계\n${formatWon(old)} → ${formatWon(next)}\n변경 차액 ${formatWon(next - old)}\n\n$info\n\n원래 외화 입력 금액을 기준으로 다시 계산합니다.',
         action: '재계산 적용',
-      ))
-        { return; }
-      if (!mounted) { return; }
+      )) {
+        return;
+      }
+      if (!mounted) {
+        return;
+      }
       await guarded(context, () async {
         await widget.app.store.recalculate(widget.tripId, preview);
         await widget.app.changed();
       });
     } on FormatException catch (e) {
-      if (mounted) { message(context, e.message.toString()); }
+      if (mounted) {
+        message(context, e.message.toString());
+      }
     } catch (_) {
-      if (mounted) { message(context, '재계산하지 못했어요. 기존 경비는 유지됩니다.'); }
+      if (mounted) {
+        message(context, '재계산하지 못했어요. 기존 경비는 유지됩니다.');
+      }
     } finally {
-      if (mounted) { setState(() => recalculating = false); }
+      if (mounted) {
+        setState(() => recalculating = false);
+      }
     }
   }
 
@@ -149,21 +169,24 @@ class _TripDetailState extends State<TripDetail> {
   Widget build(BuildContext context) => FutureBuilder<(DbRow?, List<DbRow>)>(
     future: data,
     builder: (context, snapshot) {
-      if (snapshot.hasError)
-        { return Scaffold(
+      if (snapshot.hasError) {
+        return Scaffold(
           appBar: AppBar(),
           body: Center(
             child: TextButton(onPressed: reload, child: const Text('다시 불러오기')),
           ),
-        ); }
-      if (!snapshot.hasData)
-        { return const Scaffold(body: Center(child: CircularProgressIndicator())); }
+        );
+      }
+      if (!snapshot.hasData) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
       final (trip, expenses) = snapshot.data!;
-      if (trip == null)
-        { return Scaffold(
+      if (trip == null) {
+        return Scaffold(
           appBar: AppBar(),
           body: const Center(child: Text('삭제되었거나 찾을 수 없는 여행이에요.')),
-        ); }
+        );
+      }
       final country = countryByCode(trip['country']! as String);
       final budget = BigInt.parse(trip['budget']! as String),
           total = totalWon(expenses);
@@ -360,8 +383,9 @@ class _TripDetailState extends State<TripDetail> {
                             e['name']! as String,
                             action: '삭제',
                           ) ||
-                          !context.mounted)
-                        { return; }
+                          !context.mounted) {
+                        return;
+                      }
                       await guarded(context, () async {
                         await widget.app.store.db.delete(
                           'expenses',

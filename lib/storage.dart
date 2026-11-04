@@ -66,12 +66,16 @@ class Storage {
     orderBy: 'id',
   );
   void _validateTrip(DbRow trip) {
-    if (trip.containsKey('name') && (trip['name'] as String).trim().isEmpty)
-      { throw const FormatException('여행 이름을 입력해 주세요.'); }
-    if (trip.containsKey('country')) { countryByCode(trip['country']! as String); }
+    if (trip.containsKey('name') && (trip['name'] as String).trim().isEmpty) {
+      throw const FormatException('여행 이름을 입력해 주세요.');
+    }
+    if (trip.containsKey('country')) {
+      countryByCode(trip['country']! as String);
+    }
     if (trip.containsKey('budget') &&
-        !RegExp(r'^\d+$').hasMatch(trip['budget']! as String))
-      { throw const FormatException('예산은 0 이상이어야 합니다.'); }
+        !RegExp(r'^\d+$').hasMatch(trip['budget']! as String)) {
+      throw const FormatException('예산은 0 이상이어야 합니다.');
+    }
   }
 
   Future<int> createTrip(DbRow trip) => db.transaction((txn) async {
@@ -143,8 +147,9 @@ class Storage {
   Future<void> saveExpense(int tripId, DbRow row, {int? id}) async {
     // Validate again at the persistence boundary; ignore caller-provided won.
     if ((row['name']! as String).trim().isEmpty ||
-        (row['category']! as String).trim().isEmpty)
-      { throw const FormatException('경비 이름과 카테고리를 입력해 주세요.'); }
+        (row['category']! as String).trim().isEmpty) {
+      throw const FormatException('경비 이름과 카테고리를 입력해 주세요.');
+    }
     final currency = row['currency']! as String;
     final rate = currency == 'KRW' ? '1' : row['rate']! as String;
     final won = convertToWon(
@@ -204,7 +209,9 @@ class Storage {
       });
   Future<T> setting<T>(String key, T fallback) async {
     final rows = await db.query('settings', where: 'key = ?', whereArgs: [key]);
-    if (rows.isEmpty) { return fallback; }
+    if (rows.isEmpty) {
+      return fallback;
+    }
     return jsonDecode(rows.single['value']! as String) as T;
   }
 

@@ -40,11 +40,15 @@ class _TripFormState extends State<TripForm> {
       showDragHandle: true,
       builder: (_) => const CountryPicker(),
     );
-    if (selected != null && mounted) { setState(() => country = selected); }
+    if (selected != null && mounted) {
+      setState(() => country = selected);
+    }
   }
 
   Future<void> save() async {
-    if (!form.currentState!.validate()) { return; }
+    if (!form.currentState!.validate()) {
+      return;
+    }
     setState(() => saving = true);
     final result = await guarded(context, () async {
       final row = <String, Object?>{
@@ -61,7 +65,9 @@ class _TripFormState extends State<TripForm> {
       await widget.app.changed();
       return true;
     });
-    if (!mounted) { return; }
+    if (!mounted) {
+      return;
+    }
     if (result == true) {
       Navigator.pop(context);
     } else {
@@ -152,8 +158,9 @@ class _TripFormState extends State<TripForm> {
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
                     );
-                    if (mounted && date != null)
-                      { setState(() => departure = date); }
+                    if (mounted && date != null) {
+                      setState(() => departure = date);
+                    }
                   },
                 ),
               ),

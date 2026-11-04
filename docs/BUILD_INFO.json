@@ -1,0 +1,13 @@
+{
+  "app": "여행 준비 도우미",
+  "version": "1.0.0+1",
+  "source_commit": "ce1acc8b77cf77571f46ee5fea09ecdad14c6212",
+  "workflow_run": "https://github.com/kdju1212/trip_cal/actions/runs/41839359570",
+  "tests_passed": 25,
+  "analysis": "No issues found",
+  "apk": "app-arm64-v8a-release.apk",
+  "apk_bytes": 22314020,
+  "apk_sha256": "0e8f874eaafec500d6a28bad03d70efa02ec51c01fa54ad0f7e463ca88bee94a",
+  "signing": "debug key, testing only",
+  "ads": "Google test IDs, UMP-gated"
+}

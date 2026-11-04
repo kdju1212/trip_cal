@@ -17,7 +17,9 @@ class AdsService {
       : 'ca-app-pub-3940256099942544/6300978111';
   static Future<void> initialize() => _initializing ??= _initialize();
   static Future<void> _initialize() async {
-    if (!supported || bannerId.isEmpty) { return; }
+    if (!supported || bannerId.isEmpty) {
+      return;
+    }
     try {
       final ready = Completer<void>();
       ConsentInformation.instance.requestConsentInfoUpdate(
@@ -25,13 +27,19 @@ class AdsService {
         () async {
           try {
             await ConsentForm.loadAndShowConsentFormIfRequired((error) {});
-            if (!ready.isCompleted) { ready.complete(); }
+            if (!ready.isCompleted) {
+              ready.complete();
+            }
           } catch (_) {
-            if (!ready.isCompleted) { ready.complete(); }
+            if (!ready.isCompleted) {
+              ready.complete();
+            }
           }
         },
         (error) {
-          if (!ready.isCompleted) { ready.complete(); }
+          if (!ready.isCompleted) {
+            ready.complete();
+          }
         },
       );
       await ready.future.timeout(const Duration(seconds: 20));
@@ -45,7 +53,9 @@ class AdsService {
   }
 
   static Future<bool> privacyOptions() async {
-    if (!supported) { return false; }
+    if (!supported) {
+      return false;
+    }
     // Stop and dispose existing banners while consent is being changed.
     allowed.value = false;
     try {

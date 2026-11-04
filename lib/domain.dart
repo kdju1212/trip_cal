@@ -68,7 +68,9 @@ BigInt convertToWon(String amount, String rate, {int fractionDigits = 2}) {
   }
   final a = Decimal.parse(amount);
   final r = Decimal.parse(rate);
-  if (r <= Decimal.zero) { throw const FormatException('환율은 0보다 커야 합니다.'); }
+  if (r <= Decimal.zero) {
+    throw const FormatException('환율은 0보다 커야 합니다.');
+  }
   // All values are non-negative; round half up to the nearest won.
   final product = a * r;
   final text = product.toString();
@@ -87,7 +89,9 @@ String formatWon(BigInt value) {
   final digits = value.abs().toString();
   final result = StringBuffer(negative ? '-' : '');
   for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) { result.write(','); }
+    if (i > 0 && (digits.length - i) % 3 == 0) {
+      result.write(',');
+    }
     result.write(digits[i]);
   }
   result.write('원');
@@ -95,11 +99,15 @@ String formatWon(BigInt value) {
 }
 
 String dDay(DateTime? departure, DateTime now) {
-  if (departure == null) { return '출발일 미정'; }
+  if (departure == null) {
+    return '출발일 미정';
+  }
   final date = DateTime.utc(departure.year, departure.month, departure.day);
   final today = DateTime.utc(now.year, now.month, now.day);
   final days = date.difference(today).inDays;
-  if (days == 0) { return 'D-Day'; }
+  if (days == 0) {
+    return 'D-Day';
+  }
   return days > 0 ? 'D-$days' : 'D+${-days}';
 }
 
@@ -126,7 +134,9 @@ Map<String, BigInt> categoryTotals(Iterable<DbRow> expenses) {
 
 /// Bounded conversion is only used for display; money remains BigInt/Decimal.
 double budgetRatio(BigInt spent, BigInt budget) {
-  if (budget <= BigInt.zero) { return spent > BigInt.zero ? 1 : 0; }
+  if (budget <= BigInt.zero) {
+    return spent > BigInt.zero ? 1 : 0;
+  }
   final basisPoints = spent * BigInt.from(10000) ~/ budget;
   final bounded = basisPoints < BigInt.zero
       ? BigInt.zero
@@ -162,7 +172,9 @@ const overseasItems = <String, List<String>>{
 
 /// Exact percentage text, independent of the bounded chart ratio.
 String budgetUsagePercent(BigInt spent, BigInt budget) {
-  if (budget <= BigInt.zero) { return '—'; }
+  if (budget <= BigInt.zero) {
+    return '—';
+  }
   final tenths = (spent * BigInt.from(2000) + budget) ~/ (budget * BigInt.two);
   return '${tenths ~/ BigInt.from(10)}.${tenths.remainder(BigInt.from(10))}';
 }

@@ -64,8 +64,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
           quote = result;
           loading = false;
         });
-        if (result.cached)
-          { message(context, '조회에 실패해 저장된 환율을 불러왔어요. 기준 날짜를 확인하세요.'); }
+        if (result.cached) {
+          message(context, '조회에 실패해 저장된 환율을 불러왔어요. 기준 날짜를 확인하세요.');
+        }
       }
     } on FormatException catch (e) {
       if (mounted && generation == request) {
@@ -76,16 +77,21 @@ class _ExpenseFormState extends State<ExpenseForm> {
   }
 
   Future<void> changeCurrency(String next) async {
-    if (next == currency) { return; }
+    if (next == currency) {
+      return;
+    }
     if (amount.text.isNotEmpty &&
         !await confirm(
           context,
           '통화를 바꿀까요?',
           '숫자가 다른 통화로 해석되지 않도록 입력 금액을 초기화합니다.',
           action: '초기화하고 변경',
-        ))
-      { return; }
-    if (!mounted) { return; }
+        )) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
     generation++;
     setState(() {
       currency = next;
@@ -93,7 +99,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
       quote = null;
       loading = false;
     });
-    if (next != 'KRW') { await fetchRate(); }
+    if (next != 'KRW') {
+      await fetchRate();
+    }
   }
 
   Future<void> manualRate() async {
@@ -125,17 +133,23 @@ class _ExpenseFormState extends State<ExpenseForm> {
       ),
     );
     c.dispose();
-    if (value == null || !mounted) { return; }
+    if (value == null || !mounted) {
+      return;
+    }
     final q = await guarded(
       context,
       () => widget.app.rates.manual(currency, value, dateText(DateTime.now())),
     );
-    if (mounted && q != null) { setState(() => quote = q); }
+    if (mounted && q != null) {
+      setState(() => quote = q);
+    }
   }
 
   BigInt? get converted {
     try {
-      if (currency != 'KRW' && quote == null) { return null; }
+      if (currency != 'KRW' && quote == null) {
+        return null;
+      }
       return convertToWon(
         rawNumber(amount),
         currency == 'KRW' ? '1' : quote!.rate,
@@ -147,7 +161,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
   }
 
   Future<void> save() async {
-    if (!form.currentState!.validate()) { return; }
+    if (!form.currentState!.validate()) {
+      return;
+    }
     if (converted == null) {
       message(context, '금액과 환율을 확인해 주세요.');
       return;
@@ -168,7 +184,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
       await widget.app.changed();
       return true;
     });
-    if (!mounted) { return; }
+    if (!mounted) {
+      return;
+    }
     if (result == true) {
       Navigator.pop(context);
     } else {

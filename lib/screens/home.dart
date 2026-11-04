@@ -25,7 +25,9 @@ class _HomeState extends State<Home> {
 
   void reload() {
     data = load();
-    if (mounted) { setState(() {}); }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<List<DbRow>> load() async {
@@ -78,15 +80,17 @@ class _HomeState extends State<Home> {
     body: FutureBuilder<List<DbRow>>(
       future: data,
       builder: (context, snapshot) {
-        if (snapshot.hasError)
-          { return Center(
+        if (snapshot.hasError) {
+          return Center(
             child: TextButton(
               onPressed: reload,
               child: const Text('여행을 불러오지 못했어요. 다시 시도'),
             ),
-          ); }
-        if (!snapshot.hasData)
-          { return const Center(child: CircularProgressIndicator()); }
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final trips = snapshot.data!;
         return RefreshIndicator(
           onRefresh: () async {

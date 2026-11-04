@@ -22,7 +22,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   void reload() {
     data = widget.app.store.checklist(widget.tripId);
-    if (mounted) { setState(() {}); }
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -72,11 +74,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           ),
           FilledButton(
             onPressed: () {
-              if (form.currentState!.validate())
-                { Navigator.pop(context, <String, Object?>{
+              if (form.currentState!.validate()) {
+                Navigator.pop(context, <String, Object?>{
                   'name': name.text.trim(),
                   'category': category.text.trim(),
-                }); }
+                });
+              }
             },
             child: const Text('저장'),
           ),
@@ -85,7 +88,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     );
     name.dispose();
     category.dispose();
-    if (result == null || !mounted) { return; }
+    if (result == null || !mounted) {
+      return;
+    }
     await guarded(context, () async {
       if (item == null) {
         await widget.app.store.db.insert('checklist', {
@@ -115,12 +120,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     body: FutureBuilder<List<DbRow>>(
       future: data,
       builder: (context, snapshot) {
-        if (snapshot.hasError)
-          { return Center(
+        if (snapshot.hasError) {
+          return Center(
             child: TextButton(onPressed: reload, child: const Text('다시 불러오기')),
-          ); }
-        if (!snapshot.hasData)
-          { return const Center(child: CircularProgressIndicator()); }
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final items = snapshot.data!;
         final count = items.where((e) => e['checked'] == 1).length;
         final groups = items.map((e) => e['category']! as String).toSet();
@@ -202,8 +209,9 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                                     item['name']! as String,
                                     action: '삭제',
                                   ) ||
-                                  !context.mounted)
-                                { return; }
+                                  !context.mounted) {
+                                return;
+                              }
                               await guarded(context, () async {
                                 await widget.app.store.db.delete(
                                   'checklist',

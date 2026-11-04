@@ -8,13 +8,14 @@ Future<T?> guarded<T>(BuildContext context, Future<T> Function() action) async {
   try {
     return await action();
   } catch (error) {
-    if (context.mounted)
-      { message(
+    if (context.mounted) {
+      message(
         context,
         error is FormatException
             ? error.message.toString()
             : '저장하지 못했어요. 다시 시도해 주세요.',
-      ); }
+      );
+    }
     return null;
   }
 }
@@ -54,10 +55,13 @@ Future<void> openExternal(BuildContext context, String raw) async {
   }
   try {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
-        context.mounted)
-      { message(context, '링크를 열 수 없어요.'); }
+        context.mounted) {
+      message(context, '링크를 열 수 없어요.');
+    }
   } catch (_) {
-    if (context.mounted) { message(context, '링크를 열 수 없어요.'); }
+    if (context.mounted) {
+      message(context, '링크를 열 수 없어요.');
+    }
   }
 }
 
@@ -125,8 +129,9 @@ class NumberInputFormatter extends TextInputFormatter {
     if (raw.length > 24 ||
         !RegExp(
           decimals == 0 ? r'^\d*$' : '^\\d*(?:\\.\\d{0,$decimals})?\$',
-        ).hasMatch(raw))
-      { return oldValue; }
+        ).hasMatch(raw)) {
+      return oldValue;
+    }
     final parts = raw.split('.');
     final integer = parts[0].replaceAllMapped(
       RegExp(r'(\d)(?=(\d{3})+(?!\d))'),

@@ -12,10 +12,13 @@ class DdayNotifications {
   bool get supported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   Future<void> initialize() async {
-    if (!supported) { return; }
+    if (!supported) {
+      return;
+    }
     channel.setMethodCallHandler((call) async {
-      if (call.method == 'openTrip' && call.arguments is int)
-        { onOpen?.call(call.arguments as int); }
+      if (call.method == 'openTrip' && call.arguments is int) {
+        onOpen?.call(call.arguments as int);
+      }
     });
   }
 
@@ -32,7 +35,9 @@ class DdayNotifications {
   }
 
   Future<void> _sync() async {
-    if (!supported) { return; }
+    if (!supported) {
+      return;
+    }
     final enabled = await storage.setting('notificationEnabled', false);
     final trips = await storage.trips();
     final snapshots = <Map<String, Object?>>[];
