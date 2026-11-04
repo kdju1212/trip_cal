@@ -1,13 +1,16 @@
 {
   "app": "여행 준비 도우미",
   "version": "1.0.0+1",
-  "source_commit": "ce1acc8b77cf77571f46ee5fea09ecdad14c6212",
-  "workflow_run": "https://github.com/kdju1212/trip_cal/actions/runs/41839359570",
+  "source_commit": "af77192be8bd3fbb87a52c8943af0396c8fb20d4",
+  "workflow_run": "https://github.com/kdju1212/trip_cal/actions/runs/41843432137",
   "tests_passed": 25,
   "analysis": "No issues found",
-  "apk": "app-arm64-v8a-release.apk",
-  "apk_bytes": 22314020,
-  "apk_sha256": "0e8f874eaafec500d6a28bad03d70efa02ec51c01fa54ad0f7e463ca88bee94a",
+  "apk": "trip-cal-fixed-arm64.apk",
+  "apk_bytes": 27450799,
+  "apk_sha256": "4a0083fe1bc0ad1c6f67ccf2cc6ed2f46f4469d5e6561a0b0590c828f818664a",
   "signing": "debug key, testing only",
-  "ads": "Google test IDs, UMP-gated"
+  "ads": "Google test IDs, UMP-gated",
+  "android_emulator": "Android 15 release startup passed; Android 17 emulator setup was inconclusive",
+  "release_shrinking": "disabled to retain WorkManager Room constructors",
+  "real_device": "User reported the fixed APK opens on Galaxy S26 running Android 17"
 }

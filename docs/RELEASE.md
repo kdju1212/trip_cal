@@ -14,7 +14,7 @@ keytool -genkeypair -v -keystore C:\secure\trip-cal-upload.jks -keyalg RSA -keys
 3. `flutter test`와 정적 분석을 통과한 뒤:
 
 ```powershell
-flutter build appbundle --release
+flutter build appbundle --release --no-shrink
 ```
 
 결과: `build/app/outputs/bundle/release/app-release.aab`. 키 설정이 없으면 테스트용 debug 서명이므로 업로드하면 안 됩니다. 업로드 전 `jarsigner -verify -verbose -certs` 등으로 실제 서명을 확인하세요. Play App Signing 사용과 키 백업/보관 책임을 정하세요.
@@ -29,7 +29,7 @@ flutter build appbundle --release
 - 다음 빌드 인자로 실제 배너를 사용합니다. 게시하지 않고 검증하려면 테스트 기기를 등록하세요.
 
 ```powershell
-flutter build appbundle --release --dart-define=PRODUCTION_ADS=true --dart-define=ADMOB_BANNER_ID=ca-app-pub-.../...
+flutter build appbundle --release --no-shrink --dart-define=PRODUCTION_ADS=true --dart-define=ADMOB_BANNER_ID=ca-app-pub-.../...
 ```
 
 - iOS 실제 App ID는 `ios/Runner/Info.plist`의 `GADApplicationIdentifier`를 교체합니다. iOS용 별도 배너 ID가 필요합니다. ATT/광고 정책과 SKAdNetwork 설정을 확인해야 하며 iOS 출시는 이 작업에서 검증하지 않았습니다.
@@ -45,3 +45,5 @@ flutter build appbundle --release --dart-define=PRODUCTION_ADS=true --dart-defin
 - 판매처/국가 콘텐츠와 공식 출처의 유효성을 다시 확인합니다. 제휴 링크를 추가하면 데이터와 고지 문구를 함께 수정합니다.
 - 앱 아이콘과 스토어 스크린샷을 제작합니다. 현재 아이콘은 Flutter 템플릿 기본 아이콘으로 출시 전 교체해야 합니다.
 - 내부/비공개 테스트 및 계정별 Play 테스트 요구사항을 완료하고 사용자가 게시를 승인한 뒤 제출합니다.
+
+릴리스 코드 축소는 WorkManager 데이터베이스 생성자가 제거되어 앱이 시작할 때 종료되는 문제를 방지하기 위해 비활성화했습니다. 최적화 설정을 변경하는 경우 반드시 실제 릴리스 APK의 시작을 Android 기기에서 다시 검증하세요.

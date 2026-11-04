@@ -11,17 +11,11 @@
 
 GitHub Actions는 Flutter 3.47.9 / JDK 17에서 `flutter pub get`, `flutter analyze`, `flutter test --reporter expanded`, debug/release-mode 테스트 APK 빌드를 실행합니다. 실제 실행 결과는 Actions 로그를 기준으로 판단해야 합니다.
 
-최종 검증 커밋 `ce1acc8b77cf77571f46ee5fea09ecdad14c6212`: [Actions 실행 41839359570](https://github.com/kdju1212/trip_cal/actions/runs/41839359570) **성공**.
+Android 릴리스 APK 시작 오류를 수정했습니다. 기존 `ce1acc8` 릴리스는 R8 코드 축소 과정에서 `androidx.work.impl.WorkDatabase_Impl`의 기본 생성자가 제거되어 시작 시 종료됐습니다. Android 15 가상 기기에서 기존 APK 오류를 재현했습니다.
 
-- `flutter analyze`: **No issues found** (오류·경고·스타일 권고 없음)
-- `flutter test --reporter expanded`: **25개 모두 통과**
-- Android debug APK 생성 성공
-- release 모드 테스트 APK 3종 생성 성공: ARM 32비트 20.0MB, arm64 22.3MB, x86_64 23.9MB
-- [arm64 APK artifact](https://github.com/kdju1212/trip_cal/actions/runs/41839359570/artifacts/13327139778), [전체 APK artifact](https://github.com/kdju1212/trip_cal/actions/runs/41839359570/artifacts/13328099755)
+수정 커밋 `af77192`는 릴리스 코드 축소를 비활성화합니다. [빌드 및 실행 검사](https://github.com/kdju1212/trip_cal/actions/runs/41843432137)에서 정적 분석과 자동 테스트 25개, Android APK 빌드, Android 15 가상 기기의 릴리스 앱 시작을 확인했습니다. 수정된 arm64 APK에 필요한 생성자가 포함된 것도 확인했습니다. Android 17 가상 기기 검사는 테스트 환경의 저장 공간 및 패키지 관리자 문제로 결론을 내리지 못했습니다. 사용자는 수정 APK가 Android 17을 사용하는 갤럭시 S26에서 열린다고 확인했습니다.
 
-설치 파일 로컬 경로: `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk`. 빌드 출처와 SHA-256은 `docs/BUILD_INFO.json`에 기록했습니다. 기본 APK와 ABI별 APK는 테스트용 debug 서명이며 광고는 테스트 ID입니다. Play 게시를 수행하지 않았습니다.
-
-최종 로컬 소스는 이 실행에서 실제 분석·테스트·빌드한 `dart format` 출력과 동일한 파일을 반영했습니다. 검증 커밋과 토큰 동등성도 확인했습니다. 이후 커밋은 이 포맷 출력 및 검증 기록만 반영하며 CI 재실행을 생략합니다.
+검증한 arm64 APK 로컬 경로는 `build/app/outputs/flutter-apk/trip-cal-fixed-arm64.apk`입니다. APK 해시와 출처는 `docs/BUILD_INFO.json`에 있습니다. 테스트 광고와 debug 서명을 사용합니다.
 
 
 테스트 범위: 도메인 혼합 통화 예시(900,000원/남은 1,100,000원), 반올림/음수/0환율/통화 소수 자릿수/큰 금액, D-day/미정/지난 날짜, 통화 연결, DB CRUD/복제/격리/cascade/체크 상태/재연결/v1 마이그레이션, API 응답/캐시/오프라인/수동/중복 요청/저장된 경비 불변/재계산 중복 방지, 출발일 없는 여행 생성/국가 검색/작은 화면/다크모드/차트, 알림 설정 MethodChannel 계약.

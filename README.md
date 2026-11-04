@@ -37,7 +37,7 @@ flutter run
 flutter analyze
 flutter test --reporter expanded
 flutter build apk --debug
-flutter build apk --release
+flutter build apk --release --no-shrink
 ```
 
 생성 경로:
@@ -59,3 +59,5 @@ GitHub Actions의 **Flutter checks and Android APK**가 위 정적 분석·테�
 ## 주요 패키지
 
 `sqflite` 2.4.5, `decimal` 3.2.6, `fl_chart` 1.3.0, `http` 1.6.0, `url_launcher` 6.3.3, `google_mobile_ads` 9.2.0, `path` 1.9.1, Flutter localization/intl. 상태는 Flutter ChangeNotifier로 관리하고 Android 알림은 Kotlin MethodChannel로 구현했습니다. 테스트는 `flutter_test`, `sqflite_common_ffi` 2.4.5를 사용합니다. 실제 확정 버전은 `pubspec.lock`에 저장했습니다.
+
+릴리스 APK의 코드 축소는 Android WorkManager 초기화에 필요한 생성자가 제거되는 문제를 피하기 위해 비활성화되어 있습니다. APK 또는 AAB를 만들 때 `--no-shrink`를 유지하세요.
