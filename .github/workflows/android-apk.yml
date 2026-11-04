@@ -72,9 +72,11 @@ jobs:
         run: flutter build apk --release --no-shrink --split-per-abi --target-platform android-arm64,android-x64
       - name: Verify side-by-side app ID
         run: |
-          test "$(apkanalyzer manifest application-id build/app/outputs/flutter-apk/app-arm64-v8a-release.apk)" = "com.tripcal.app.preview"
-          apkanalyzer manifest print build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | grep -q 'com.tripcal.app.MainActivity'
-          apkanalyzer manifest print build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | grep -q 'com.tripcal.app.DdayReceiver'
+          analyzer="$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer"
+          test "$("$analyzer" manifest application-id build/app/outputs/flutter-apk/app-arm64-v8a-release.apk)" = "com.tripcal.app.preview"
+          "$analyzer" manifest print build/app/outputs/flutter-apk/app-arm64-v8a-release.apk > /tmp/trip-cal-preview-manifest.xml
+          grep -q 'com.tripcal.app.MainActivity' /tmp/trip-cal-preview-manifest.xml
+          grep -q 'com.tripcal.app.DdayReceiver' /tmp/trip-cal-preview-manifest.xml
       - name: Upload side-by-side preview APK
         uses: actions/upload-artifact@v4
         with:
