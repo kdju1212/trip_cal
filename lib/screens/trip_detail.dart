@@ -35,8 +35,8 @@ class _TripDetailState extends State<TripDetail> {
       if (mounted && result == true) Navigator.pop(context);
     }
     if (action == 'copy' && mounted) {
-      await guarded(context, () async { await widget.app.store.duplicateTrip(widget.tripId); await widget.app.changed(); });
-      if (mounted) message(context, '여행 목록에 복사본을 만들었어요.');
+      final copied = await guarded(context, () async { await widget.app.store.duplicateTrip(widget.tripId); await widget.app.changed(); return true; });
+      if (mounted && copied == true) message(context, '여행 목록에 복사본을 만들었어요.');
     }
   }
   Future<void> recalculate(List<DbRow> expenses) async {

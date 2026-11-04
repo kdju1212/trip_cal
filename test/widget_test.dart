@@ -12,7 +12,7 @@ void main() {
   late Storage store;
   late AppController app;
   sqfliteFfiInit();
-  setUp(() async { store = await Storage.open(factory: databaseFactoryFfi, path: inMemoryDatabasePath); app = AppController(store); });
+  setUp(() async { store = await Storage.open(factory: databaseFactoryFfiNoIsolate, path: inMemoryDatabasePath); app = AppController(store); });
   tearDown(() async { app.dispose(); app.rates.client.close(); await store.db.close(); });
   Widget wrap(Widget child, {bool dark = false, double scale = 1}) => MaterialApp(theme: ThemeData(useMaterial3: true, brightness: dark ? Brightness.dark : Brightness.light), builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)), child: child!), home: child);
   testWidgets('새 여행은 출발일 입력 없이 저장할 수 있다', (tester) async {

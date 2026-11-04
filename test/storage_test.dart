@@ -72,6 +72,16 @@ void main() {
     expect(updated['amount'], '30000');
     expect(updated['won'], '300000');
   });
+  test('재계산 미리보기 후 경비가 수정되면 오래된 계산을 적용하지 않는다', () async {
+    final id = await trip();
+    await store.saveExpense(id, expense('호텔', '100', 'JPY', '9'));
+    final old = (await store.expenses(id)).single;
+    await store.saveExpense(id, expense('호텔', '200', 'JPY', '9'), id: old['id']! as int);
+    await expectLater(store.recalculate(id, [{...old, 'rate': '10'}]), throwsFormatException);
+    final current = (await store.expenses(id)).single;
+    expect(current['amount'], '200');
+    expect(current['won'], '1800');
+  });
   test('DB 재연결 후 데이터와 설정 유지', () async {
     final path = '${await databaseFactoryFfi.getDatabasesPath()}/trip_cal_persistence_test.db';
     await databaseFactoryFfi.deleteDatabase(path);

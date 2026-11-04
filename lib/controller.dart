@@ -4,7 +4,7 @@ import 'services/rates.dart';
 import 'services/notifications.dart';
 
 class AppController extends ChangeNotifier {
-  AppController(this.store) : rates = RateService(store), notifications = DdayNotifications(store);
+  AppController(this.store, {RateService? rates}) : rates = rates ?? RateService(store), notifications = DdayNotifications(store);
   final Storage store;
   final RateService rates;
   final DdayNotifications notifications;
