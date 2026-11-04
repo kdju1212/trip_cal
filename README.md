@@ -34,7 +34,7 @@ flutter run
 ## 검증 및 APK
 
 ```powershell
-flutter analyze --no-fatal-infos
+flutter analyze
 flutter test --reporter expanded
 flutter build apk --debug
 flutter build apk --release
@@ -43,14 +43,19 @@ flutter build apk --release
 생성 경로:
 
 - `build/app/outputs/flutter-apk/app-debug.apk`
-- `build/app/outputs/flutter-apk/app-release.apk`
+- `build/app/outputs/flutter-apk/app-release.apk` (로컬 기본 릴리스 빌드)
+- CI는 `--split-per-abi`로 `app-arm64-v8a-release.apk`, `app-armeabi-v7a-release.apk`, `app-x86_64-release.apk`를 생성합니다.
 
 키가 없으면 release 모드도 **테스트용 debug 서명**입니다. Play 업로드용이 아닙니다.
 
-GitHub Actions의 **Flutter checks and Android APK**가 위 정적 분석·테스트·두 APK 빌드를 실행합니다. 성공한 실행의 `trip-cal-test-apks` artifact에서 설치 파일을 받을 수 있습니다. 빌드 실패 시 APK가 없으므로 실행 결과를 먼저 확인하세요.
+GitHub Actions의 **Flutter checks and Android APK**가 위 정적 분석·테스트·두 APK 빌드를 실행합니다. 성공한 실행의 `trip-cal-test-apks` artifact에서 설치 파일을 받을 수 있습니다. 일반적인 최근 Android 휴대폰용 arm64 파일은 `trip-cal-arm64-apk` artifact로도 제공합니다. 빌드 실패 시 APK가 없으므로 실행 결과를 먼저 확인하세요.
 
 ## 파일 구성
 
 `lib/domain.dart`: 국가·통화·정밀 계산 / `storage.dart`: SQLite 및 마이그레이션 / `controller.dart`: 상태·설정 갱신 / `services/`: 환율·알림·광고 / `screens/`: 8개 화면 / `widgets/`: 차트·배너·공통 입력 / `assets/tips/`: 국가별 JSON / `android/`: 네이티브 알림·Gradle / `ios/`: Xcode 프로젝트 / `test/`: 도메인·DB·API·위젯·알림 채널 테스트.
 
 세부 검증 상태와 제한은 [docs/VERIFICATION.md](docs/VERIFICATION.md), 서명 AAB·광고·스토어 준비는 [docs/RELEASE.md](docs/RELEASE.md), 개인정보 초안은 [docs/PRIVACY.md](docs/PRIVACY.md)를 확인하세요.
+
+## 주요 패키지
+
+`sqflite` 2.4.5, `decimal` 3.2.6, `fl_chart` 1.3.0, `http` 1.6.0, `url_launcher` 6.3.3, `google_mobile_ads` 9.2.0, `path` 1.9.1, Flutter localization/intl. 상태는 Flutter ChangeNotifier로 관리하고 Android 알림은 Kotlin MethodChannel로 구현했습니다. 테스트는 `flutter_test`, `sqflite_common_ffi` 2.4.5를 사용합니다. 실제 확정 버전은 `pubspec.lock`에 저장했습니다.

@@ -3,7 +3,8 @@ import 'package:trip_cal/domain.dart';
 
 void main() {
   test('혼합 통화 예산은 원래 금액과 적용 환율로 계산한다', () {
-    final total = convertToWon('500000', '1', fractionDigits: 0) +
+    final total =
+        convertToWon('500000', '1', fractionDigits: 0) +
         convertToWon('30000', '9.5', fractionDigits: 0) +
         convertToWon('10000', '9.5', fractionDigits: 0) +
         convertToWon('20000', '1', fractionDigits: 0);
@@ -14,8 +15,14 @@ void main() {
     expect(convertToWon('1.25', '10'), BigInt.from(13));
     expect(() => convertToWon('-1', '1'), throwsFormatException);
     expect(() => convertToWon('1', '0'), throwsFormatException);
-    expect(() => convertToWon('1.5', '1', fractionDigits: 0), throwsFormatException);
-    expect(convertToWon('999999999999999999', '2', fractionDigits: 0), BigInt.parse('1999999999999999998'));
+    expect(
+      () => convertToWon('1.5', '1', fractionDigits: 0),
+      throwsFormatException,
+    );
+    expect(
+      convertToWon('999999999999999999', '2', fractionDigits: 0),
+      BigInt.parse('1999999999999999998'),
+    );
   });
   test('출발일 없음, 당일, 미래와 과거', () {
     final now = DateTime(2026, 11, 4, 23);
@@ -28,12 +35,29 @@ void main() {
     expect(budgetRatio(BigInt.zero, BigInt.zero), 0);
     expect(budgetRatio(BigInt.one, BigInt.zero), 1);
     expect(budgetRatio(BigInt.from(3), BigInt.from(2)), 1.5);
-    expect(budgetRatio(BigInt.parse('999999999999999999999999999'), BigInt.one).isFinite, true);
+    expect(
+      budgetRatio(
+        BigInt.parse('999999999999999999999999999'),
+        BigInt.one,
+      ).isFinite,
+      true,
+    );
   });
   test('출발일 없는 여행과 과거 여행은 알림 대상에서 제외한다', () {
-    expect(notificationEligible({'departure': null}, DateTime(2026,11,4)), false);
-    expect(notificationEligible({'departure': '2026-11-03'}, DateTime(2026,11,4)), false);
-    expect(notificationEligible({'departure': '2026-11-04'}, DateTime(2026,11,4,23)), true);
+    expect(
+      notificationEligible({'departure': null}, DateTime(2026, 11, 4)),
+      false,
+    );
+    expect(
+      notificationEligible({'departure': '2026-11-03'}, DateTime(2026, 11, 4)),
+      false,
+    );
+    expect(
+      notificationEligible({
+        'departure': '2026-11-04',
+      }, DateTime(2026, 11, 4, 23)),
+      true,
+    );
   });
   test('국가 ISO 코드와 통화 연결이 중복되지 않는다', () {
     expect(countries.map((e) => e.code).toSet().length, countries.length);
@@ -43,7 +67,16 @@ void main() {
     }
   });
   test('유로 국가를 독립적으로 선택할 수 있다', () {
-    expect(countries.where((c) => c.currency == 'EUR').length, greaterThanOrEqualTo(4));
+    expect(
+      countries.where((c) => c.currency == 'EUR').length,
+      greaterThanOrEqualTo(4),
+    );
     expect(countries.firstWhere((c) => c.code == 'JP').currency, 'JPY');
   });
+  test('아주 큰 초과 예산도 사용률 숫자를 줄이지 않는다', () {
+    expect(budgetUsagePercent(BigInt.one, BigInt.from(3)), '33.3');
+    expect(budgetUsagePercent(BigInt.from(2000000), BigInt.one), '200000000.0');
+    expect(budgetUsagePercent(BigInt.zero, BigInt.zero), '—');
+  });
+
 }

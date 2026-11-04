@@ -9,7 +9,11 @@
 
 ## 자동화된 검증
 
-GitHub Actions는 Flutter 3.47.9 / JDK 17에서 `flutter pub get`, `flutter analyze --no-fatal-infos`, `flutter test --reporter expanded`, debug/release-mode 테스트 APK 빌드를 실행합니다. 실제 실행 결과는 Actions 로그를 기준으로 판단해야 합니다.
+GitHub Actions는 Flutter 3.47.9 / JDK 17에서 `flutter pub get`, `flutter analyze`, `flutter test --reporter expanded`, debug/release-mode 테스트 APK 빌드를 실행합니다. 실제 실행 결과는 Actions 로그를 기준으로 판단해야 합니다.
+
+1차 검증 커밋 `8377455`: [Actions 실행 41837597482](https://github.com/kdju1212/trip_cal/actions/runs/41837597482)에서 정적 분석(오류/경고 없음, 스타일 권고 포함), 자동 테스트 **24개 통과**, debug APK와 release 모드 테스트 APK 생성에 성공했습니다. 이후 스타일 권고를 정리하고 큰 금액 사용률 표시 회귀 테스트를 추가한 최종 검증을 진행합니다. 새로운 최종 APK는 ABI별로 분리해 제공합니다.
+
+로컬 소스는 CI에서 `dart format`으로 정리한 결과를 반영합니다. 서명은 debug 테스트 키이며 Play에 게시하지 않았습니다.
 
 테스트 범위: 도메인 혼합 통화 예시(900,000원/남은 1,100,000원), 반올림/음수/0환율/통화 소수 자릿수/큰 금액, D-day/미정/지난 날짜, 통화 연결, DB CRUD/복제/격리/cascade/체크 상태/재연결/v1 마이그레이션, API 응답/캐시/오프라인/수동/중복 요청/저장된 경비 불변/재계산 중복 방지, 출발일 없는 여행 생성/국가 검색/작은 화면/다크모드/차트, 알림 설정 MethodChannel 계약.
 

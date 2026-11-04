@@ -19,6 +19,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/gradle/wrapper/gradle-wrapper.properties
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -40,18 +44,25 @@ jobs:
             test/
           retention-days: 7
       - name: Analyze
-        run: flutter analyze --no-fatal-infos
+        run: flutter analyze
       - name: Test
         timeout-minutes: 5
         run: flutter test --reporter expanded
       - name: Android debug APK
         run: flutter build apk --debug
-      - name: Android release-mode test APK (debug signing, test ads)
-        run: flutter build apk --release
+      - name: Android release-mode test APKs (debug signing, test ads)
+        run: flutter build apk --release --split-per-abi
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: trip-cal-test-apks
           path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload arm64 installation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: trip-cal-arm64-apk
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           if-no-files-found: error
           retention-days: 14

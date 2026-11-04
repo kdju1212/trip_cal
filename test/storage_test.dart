@@ -6,15 +6,37 @@ import 'package:trip_cal/storage.dart';
 void main() {
   late Storage store;
   sqfliteFfiInit();
-  setUp(() async { store = await Storage.open(factory: databaseFactoryFfi, path: inMemoryDatabasePath); });
+  setUp(() async {
+    store = await Storage.open(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+    );
+  });
   tearDown(() async => store.db.close());
-  Future<int> trip({String country = 'JP'}) => store.createTrip({'name': '테스트 여행', 'country': country, 'budget': '2000000', 'departure': null});
-  DbRow expense(String name, String amount, String currency, String rate) => {'name': name, 'category': '숙박비', 'amount': amount, 'currency': currency, 'rate': rate, 'rate_date': '2026-11-04', 'rate_source': '직접 입력'};
+  Future<int> trip({String country = 'JP'}) => store.createTrip({
+    'name': '테스트 여행',
+    'country': country,
+    'budget': '2000000',
+    'departure': null,
+  });
+  DbRow expense(String name, String amount, String currency, String rate) => {
+    'name': name,
+    'category': '숙박비',
+    'amount': amount,
+    'currency': currency,
+    'rate': rate,
+    'rate_date': '2026-11-04',
+    'rate_source': '직접 입력',
+  };
 
   test('출발일 없이 생성, 수정 후 원래 경비 통화 유지', () async {
     final id = await trip();
     await store.saveExpense(id, expense('호텔', '30000', 'JPY', '9.5'));
-    await store.updateTrip(id, {'name': '미국으로 변경', 'country': 'US', 'budget': '3000000'});
+    await store.updateTrip(id, {
+      'name': '미국으로 변경',
+      'country': 'US',
+      'budget': '3000000',
+    });
     final row = (await store.trips()).single;
     expect(row['departure'], isNull);
     expect(row['country'], 'US');
@@ -24,14 +46,24 @@ void main() {
   });
   test('독립된 혼합 통화 합계, 경비 편집 삭제와 예산 초과', () async {
     final id = await trip();
-    await store.saveExpense(id, expense('항공', '500000', 'KRW', '100')); // KRW always rate=1.
+    await store.saveExpense(
+      id,
+      expense('항공', '500000', 'KRW', '100'),
+    ); // KRW always rate=1.
     await store.saveExpense(id, expense('호텔', '30000', 'JPY', '9.5'));
     await store.saveExpense(id, expense('식사', '10000', 'JPY', '9.5'));
     await store.saveExpense(id, expense('보험', '20000', 'KRW', '1'));
     expect(totalWon(await store.expenses(id)), BigInt.from(900000));
     final e = (await store.expenses(id)).first;
-    await store.saveExpense(id, expense('변경', '3000000', 'KRW', '1'), id: e['id']! as int);
-    expect(totalWon(await store.expenses(id)), greaterThan(BigInt.from(2000000)));
+    await store.saveExpense(
+      id,
+      expense('변경', '3000000', 'KRW', '1'),
+      id: e['id']! as int,
+    );
+    expect(
+      totalWon(await store.expenses(id)),
+      greaterThan(BigInt.from(2000000)),
+    );
     await store.db.delete('expenses', where: 'id = ?', whereArgs: [e['id']]);
     expect(totalWon(await store.expenses(id)), BigInt.from(880000));
   });
@@ -39,11 +71,25 @@ void main() {
     final id = await trip();
     await store.saveExpense(id, expense('호텔', '100', 'JPY', '9.5'));
     final item = (await store.checklist(id)).first;
-    await store.db.update('checklist', {'checked': 1}, where: 'id = ?', whereArgs: [item['id']]);
-    await store.db.insert('purchases', {'trip_id': id, 'item': 'esim', 'needed': 1});
+    await store.db.update(
+      'checklist',
+      {'checked': 1},
+      where: 'id = ?',
+      whereArgs: [item['id']],
+    );
+    await store.db.insert('purchases', {
+      'trip_id': id,
+      'item': 'esim',
+      'needed': 1,
+    });
     final copy = await store.duplicateTrip(id);
     expect((await store.checklist(copy)).first['checked'], 1);
-    await store.db.update('checklist', {'checked': 0}, where: 'trip_id = ?', whereArgs: [copy]);
+    await store.db.update(
+      'checklist',
+      {'checked': 0},
+      where: 'trip_id = ?',
+      whereArgs: [copy],
+    );
     expect((await store.checklist(id)).first['checked'], 1);
     await store.setSetting('notificationTrip', id);
     await store.setSetting('notificationEnabled', true);
@@ -52,7 +98,14 @@ void main() {
     expect(await store.checklist(id), isEmpty);
     expect(await store.setting('notificationEnabled', true), false);
     expect((await store.expenses(copy)).length, 1);
-    expect(await store.db.query('purchases', where: 'trip_id = ?', whereArgs: [copy]), hasLength(1));
+    expect(
+      await store.db.query(
+        'purchases',
+        where: 'trip_id = ?',
+        whereArgs: [copy],
+      ),
+      hasLength(1),
+    );
   });
   test('국내 준비물에는 해외 전용 준비물이 없다', () async {
     final id = await trip(country: 'KR');
@@ -76,14 +129,24 @@ void main() {
     final id = await trip();
     await store.saveExpense(id, expense('호텔', '100', 'JPY', '9'));
     final old = (await store.expenses(id)).single;
-    await store.saveExpense(id, expense('호텔', '200', 'JPY', '9'), id: old['id']! as int);
-    await expectLater(store.recalculate(id, [{...old, 'rate': '10'}]), throwsFormatException);
+    await store.saveExpense(
+      id,
+      expense('호텔', '200', 'JPY', '9'),
+      id: old['id']! as int,
+    );
+    await expectLater(
+      store.recalculate(id, [
+        {...old, 'rate': '10'},
+      ]),
+      throwsFormatException,
+    );
     final current = (await store.expenses(id)).single;
     expect(current['amount'], '200');
     expect(current['won'], '1800');
   });
   test('DB 재연결 후 데이터와 설정 유지', () async {
-    final path = '${await databaseFactoryFfi.getDatabasesPath()}/trip_cal_persistence_test.db';
+    final path =
+        '${await databaseFactoryFfi.getDatabasesPath()}/trip_cal_persistence_test.db';
     await databaseFactoryFfi.deleteDatabase(path);
     final first = await Storage.open(factory: databaseFactoryFfi, path: path);
     await first.createTrip({'name': '유지 여행', 'country': 'KR', 'budget': '0'});
@@ -96,17 +159,42 @@ void main() {
     await databaseFactoryFfi.deleteDatabase(path);
   });
   test('v1 DB 마이그레이션은 기존 여행과 경비를 보존한다', () async {
-    final path = '${await databaseFactoryFfi.getDatabasesPath()}/trip_cal_migration_test.db';
+    final path =
+        '${await databaseFactoryFfi.getDatabasesPath()}/trip_cal_migration_test.db';
     await databaseFactoryFfi.deleteDatabase(path);
-    final old = await databaseFactoryFfi.openDatabase(path, options: OpenDatabaseOptions(version: 1, onCreate: (db, version) async {
-      await db.execute('CREATE TABLE trips (id INTEGER PRIMARY KEY, name TEXT NOT NULL, country TEXT NOT NULL, departure TEXT, budget TEXT NOT NULL)');
-      await db.execute('CREATE TABLE expenses (id INTEGER PRIMARY KEY, trip_id INTEGER, name TEXT, category TEXT, amount TEXT, currency TEXT, rate TEXT, won TEXT, rate_date TEXT, rate_source TEXT)');
-      await db.execute('CREATE TABLE checklist (id INTEGER PRIMARY KEY, trip_id INTEGER, name TEXT, checked INTEGER DEFAULT 0)');
-      await db.insert('trips', {'id': 1, 'name': '기존 여행', 'country': 'JP', 'budget': '0'});
-      await db.insert('checklist', {'trip_id': 1, 'name': '여권', 'checked': 1});
-    }));
+    final old = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute(
+            'CREATE TABLE trips (id INTEGER PRIMARY KEY, name TEXT NOT NULL, country TEXT NOT NULL, departure TEXT, budget TEXT NOT NULL)',
+          );
+          await db.execute(
+            'CREATE TABLE expenses (id INTEGER PRIMARY KEY, trip_id INTEGER, name TEXT, category TEXT, amount TEXT, currency TEXT, rate TEXT, won TEXT, rate_date TEXT, rate_source TEXT)',
+          );
+          await db.execute(
+            'CREATE TABLE checklist (id INTEGER PRIMARY KEY, trip_id INTEGER, name TEXT, checked INTEGER DEFAULT 0)',
+          );
+          await db.insert('trips', {
+            'id': 1,
+            'name': '기존 여행',
+            'country': 'JP',
+            'budget': '0',
+          });
+          await db.insert('checklist', {
+            'trip_id': 1,
+            'name': '여권',
+            'checked': 1,
+          });
+        },
+      ),
+    );
     await old.close();
-    final upgraded = await Storage.open(factory: databaseFactoryFfi, path: path);
+    final upgraded = await Storage.open(
+      factory: databaseFactoryFfi,
+      path: path,
+    );
     expect((await upgraded.trips()).single['name'], '기존 여행');
     expect((await upgraded.checklist(1)).single['checked'], 1);
     expect((await upgraded.checklist(1)).single['category'], '직접 추가');
