@@ -1,0 +1,5 @@
+# Copy locally to key.properties (gitignored). Use a secure absolute key path.
+storePassword=REPLACE_LOCALLY
+keyPassword=REPLACE_LOCALLY
+keyAlias=upload
+storeFile=C:\\secure\\trip-cal-upload.jks
