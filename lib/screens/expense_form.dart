@@ -15,9 +15,6 @@ class ExpenseForm extends StatefulWidget {
 
 class _ExpenseFormState extends State<ExpenseForm> {
   final form = GlobalKey<FormState>();
-  late final name = TextEditingController(
-    text: widget.expense?['name'] as String?,
-  );
   late final amount = TextEditingController(
     text: groupedNumber(widget.expense?['amount'] as String? ?? ''),
   );
@@ -47,7 +44,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
 
   @override
   void dispose() {
-    name.dispose();
     amount.dispose();
     customCategory.dispose();
     super.dispose();
@@ -171,7 +167,9 @@ class _ExpenseFormState extends State<ExpenseForm> {
     setState(() => saving = true);
     final result = await guarded(context, () async {
       await widget.app.store.saveExpense(widget.trip['id']! as int, {
-        'name': name.text.trim(),
+        'name': widget.expense?['category'] == category
+            ? widget.expense!['name']
+            : (category == '__custom' ? customCategory.text.trim() : category),
         'category': category == '__custom'
             ? customCategory.text.trim()
             : category,
@@ -216,17 +214,6 @@ class _ExpenseFormState extends State<ExpenseForm> {
               children: [
                 const Text('예약 전에도, 계획은 가볍게'),
                 const SizedBox(height: 20),
-                TextFormField(
-                  controller: name,
-                  maxLength: 80,
-                  decoration: const InputDecoration(
-                    labelText: '경비 이름',
-                    hintText: '왕복 항공권, 3박 호텔…',
-                  ),
-                  validator: (v) =>
-                      v == null || v.trim().isEmpty ? '경비 이름을 입력해 주세요.' : null,
-                ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: category,
                   isExpanded: true,

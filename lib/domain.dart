@@ -45,7 +45,8 @@ const countries = <Country>[
 ];
 
 const categories = <String>[
-  '항공권 / 기차',
+  '항공권',
+  '기차',
   '숙박비',
   '식비',
   '교통비',

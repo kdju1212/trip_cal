@@ -6,6 +6,7 @@ import '../services/rates.dart';
 import '../widgets/budget_chart.dart';
 import '../widgets/ad_banner.dart';
 import 'expense_form.dart';
+import 'expense_batch_form.dart';
 import 'trip_form.dart';
 import 'checklist.dart';
 import 'information.dart';
@@ -211,7 +212,7 @@ class _TripDetailState extends State<TripDetail> {
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute<void>(
-              builder: (_) => ExpenseForm(widget.app, trip),
+              builder: (_) => ExpenseBatchForm(widget.app, trip),
             ),
           ),
           icon: const Icon(Icons.add),
@@ -344,14 +345,14 @@ class _TripDetailState extends State<TripDetail> {
                     vertical: 8,
                   ),
                   title: Text(
-                    e['name']! as String,
+                    e['category']! as String,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${e['category']} · ${groupedNumber(e['amount']! as String)} ${e['currency']}',
+                        '${groupedNumber(e['amount']! as String)} ${e['currency']}',
                       ),
                       Text(
                         formatWon(BigInt.parse(e['won']! as String)),
@@ -380,7 +381,7 @@ class _TripDetailState extends State<TripDetail> {
                       if (!await confirm(
                             context,
                             '경비를 삭제할까요?',
-                            e['name']! as String,
+                            e['category']! as String,
                             action: '삭제',
                           ) ||
                           !context.mounted) {

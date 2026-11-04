@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:trip_cal/controller.dart';
 import 'package:trip_cal/domain.dart';
 import 'package:trip_cal/screens/trip_form.dart';
+import 'package:trip_cal/screens/expense_batch_form.dart';
 import 'package:trip_cal/screens/trip_detail.dart';
 import 'package:trip_cal/storage.dart';
 import 'package:trip_cal/widgets/budget_chart.dart';
@@ -138,4 +139,32 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('이름 입력 없이 같은 항목을 여러 줄에 추가해 한 번에 저장한다', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final id = (await tester.runAsync(() => store.createTrip({'name': '테스트', 'country': 'KR', 'budget': '1000000'})))!;
+    final trip = (await tester.runAsync(store.trips))!.single;
+    await tester.pumpWidget(wrap(Builder(builder: (context) => Scaffold(body: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ExpenseBatchForm(app, trip))), child: const Text('시작'))))));
+    await tester.tap(find.text('시작'));
+    await tester.pumpAndSettle();
+    expect(find.text('경비 이름'), findsNothing);
+    await tester.enterText(find.byType(TextFormField).first, '500000');
+    await tester.ensureVisible(find.text('항목 추가'));
+    await tester.tap(find.text('항목 추가'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byType(TextFormField).last);
+    await tester.enterText(find.byType(TextFormField).last, '200000');
+    await tester.ensureVisible(find.text('2개 경비 저장'));
+    await tester.tap(find.text('2개 경비 저장'));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    final rows = (await tester.runAsync(() => store.expenses(id)))!;
+    expect(rows, hasLength(2));
+    expect(rows.map((e) => e['category']), everyElement('항공권'));
+    expect(totalWon(rows), BigInt.from(700000));
+    await tester.pumpWidget(const SizedBox());
+  });
+
 }

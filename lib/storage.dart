@@ -144,7 +144,7 @@ class Storage {
     }
     return newId;
   });
-  Future<void> saveExpense(int tripId, DbRow row, {int? id}) async {
+  DbRow _expenseData(int tripId, DbRow row) {
     // Validate again at the persistence boundary; ignore caller-provided won.
     if ((row['name']! as String).trim().isEmpty ||
         (row['category']! as String).trim().isEmpty) {
@@ -163,6 +163,20 @@ class Storage {
       'rate': rate,
       'won': won.toString(),
     };
+    return data;
+  }
+
+  Future<void> saveExpenses(int tripId, List<DbRow> rows) async {
+    final values = rows.map((row) => _expenseData(tripId, row)).toList();
+    await db.transaction((txn) async {
+      for (final value in values) {
+        await txn.insert('expenses', value);
+      }
+    });
+  }
+
+  Future<void> saveExpense(int tripId, DbRow row, {int? id}) async {
+    final data = _expenseData(tripId, row);
     if (id == null) {
       await db.insert('expenses', data);
     } else {
