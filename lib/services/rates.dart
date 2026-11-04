@@ -23,7 +23,7 @@ class RateService {
   }
   Future<RateQuote> latest(String code) {
     if (code == 'KRW') return Future.value(const RateQuote('KRW', '1', '', 'KRW'));
-    return _inflight.putIfAbsent(code, () => _fetch(code).whenComplete(() => _inflight.remove(code)));
+    return _inflight.putIfAbsent(code, () => _fetch(code).whenComplete(() { _inflight.remove(code); }));
   }
   Future<RateQuote> _fetch(String code) async {
     try {
