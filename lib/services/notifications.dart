@@ -18,7 +18,13 @@ class DdayNotifications {
   }
   Future<int?> initialTrip() async => supported ? await channel.invokeMethod<int>('initialTrip') : null;
   Future<bool> requestPermission() async => supported && (await channel.invokeMethod<bool>('requestPermission') ?? false);
-  Future<void> sync() async {
+  Future<void> _pending = Future<void>.value();
+  Future<void> sync() {
+    final next = _pending.catchError((Object _) {}).then((_) => _sync());
+    _pending = next;
+    return next;
+  }
+  Future<void> _sync() async {
     if (!supported) return;
     final enabled = await storage.setting('notificationEnabled', false);
     final trips = await storage.trips();

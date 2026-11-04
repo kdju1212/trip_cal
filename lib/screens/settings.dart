@@ -12,7 +12,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool enabled = false, remaining = true, busy = false, loaded = false;
   int selected = 0;
-  List<DataRow> trips = [];
+  List<DbRow> trips = [];
   @override void initState() { super.initState(); load(); }
   Future<void> load() async {
     try {

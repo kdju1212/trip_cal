@@ -10,15 +10,15 @@ class ChecklistScreen extends StatefulWidget {
   @override State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
 class _ChecklistScreenState extends State<ChecklistScreen> {
-  late Future<List<DataRow>> data;
+  late Future<List<DbRow>> data;
   @override void initState() { super.initState(); reload(); widget.app.addListener(reload); }
   void reload() { data = widget.app.store.checklist(widget.tripId); if (mounted) setState(() {}); }
   @override void dispose() { widget.app.removeListener(reload); super.dispose(); }
-  Future<void> edit([DataRow? item]) async {
+  Future<void> edit([DbRow? item]) async {
     final name = TextEditingController(text: item?['name'] as String?);
     final category = TextEditingController(text: item?['category'] as String? ?? '직접 추가');
     final form = GlobalKey<FormState>();
-    final result = await showDialog<DataRow>(context: context, builder: (context) => AlertDialog(title: Text(item == null ? '준비물 추가' : '준비물 수정'), content: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [TextFormField(controller: name, maxLength: 80, decoration: const InputDecoration(labelText: '준비물 이름'), validator: (v) => v == null || v.trim().isEmpty ? '이름을 입력해 주세요.' : null), TextFormField(controller: category, maxLength: 30, decoration: const InputDecoration(labelText: '분류'), validator: (v) => v == null || v.trim().isEmpty ? '분류를 입력해 주세요.' : null)]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')), FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, <String, Object?>{'name': name.text.trim(), 'category': category.text.trim()}); }, child: const Text('저장'))]));
+    final result = await showDialog<DbRow>(context: context, builder: (context) => AlertDialog(title: Text(item == null ? '준비물 추가' : '준비물 수정'), content: SingleChildScrollView(child: Form(key: form, child: Column(mainAxisSize: MainAxisSize.min, children: [TextFormField(controller: name, maxLength: 80, decoration: const InputDecoration(labelText: '준비물 이름'), validator: (v) => v == null || v.trim().isEmpty ? '이름을 입력해 주세요.' : null), TextFormField(controller: category, maxLength: 30, decoration: const InputDecoration(labelText: '분류'), validator: (v) => v == null || v.trim().isEmpty ? '분류를 입력해 주세요.' : null)]))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')), FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, <String, Object?>{'name': name.text.trim(), 'category': category.text.trim()}); }, child: const Text('저장'))]));
     name.dispose(); category.dispose();
     if (result == null || !mounted) return;
     await guarded(context, () async {
@@ -27,7 +27,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
       await widget.app.changed();
     });
   }
-  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('여행 준비물')), floatingActionButton: FloatingActionButton.extended(onPressed: edit, icon: const Icon(Icons.add), label: const Text('준비물 추가')), body: FutureBuilder<List<DataRow>>(future: data, builder: (context, snapshot) {
+  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('여행 준비물')), floatingActionButton: FloatingActionButton.extended(onPressed: edit, icon: const Icon(Icons.add), label: const Text('준비물 추가')), body: FutureBuilder<List<DbRow>>(future: data, builder: (context, snapshot) {
     if (snapshot.hasError) return Center(child: TextButton(onPressed: reload, child: const Text('다시 불러오기')));
     if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
     final items = snapshot.data!;

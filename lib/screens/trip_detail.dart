@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../controller.dart';
 import '../domain.dart';
 import '../widgets/common.dart';
+import '../services/rates.dart';
 import '../widgets/budget_chart.dart';
 import '../widgets/ad_banner.dart';
 import 'expense_form.dart';
@@ -16,16 +17,16 @@ class TripDetail extends StatefulWidget {
   @override State<TripDetail> createState() => _TripDetailState();
 }
 class _TripDetailState extends State<TripDetail> {
-  late Future<(DataRow?, List<DataRow>)> data;
+  late Future<(DbRow?, List<DbRow>)> data;
   bool recalculating = false;
   @override void initState() { super.initState(); reload(); widget.app.addListener(reload); }
   void reload() { data = load(); if (mounted) setState(() {}); }
-  Future<(DataRow?, List<DataRow>)> load() async {
+  Future<(DbRow?, List<DbRow>)> load() async {
     final trips = await widget.app.store.db.query('trips', where: 'id = ?', whereArgs: [widget.tripId]);
     return (trips.isEmpty ? null : trips.single, await widget.app.store.expenses(widget.tripId));
   }
   @override void dispose() { widget.app.removeListener(reload); super.dispose(); }
-  Future<void> menu(String action, DataRow trip) async {
+  Future<void> menu(String action, DbRow trip) async {
     if (action == 'edit') { await Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TripForm(widget.app, trip: trip))); return; }
     if (action == 'delete') {
       if (!await confirm(context, '여행을 삭제할까요?', '경비, 준비물과 구매 안내 선택이 함께 삭제됩니다. 복구할 수 없어요.', action: '삭제')) return;
@@ -38,17 +39,17 @@ class _TripDetailState extends State<TripDetail> {
       if (mounted) message(context, '여행 목록에 복사본을 만들었어요.');
     }
   }
-  Future<void> recalculate(List<DataRow> expenses) async {
+  Future<void> recalculate(List<DbRow> expenses) async {
     setState(() => recalculating = true);
     try {
       final foreign = expenses.where((e) => e['currency'] != 'KRW').toList();
       if (foreign.isEmpty) { message(context, '외화로 입력한 경비가 없어요.'); return; }
-      final quotes = <String, dynamic>{};
+      final quotes = <String, RateQuote>{};
       for (final code in foreign.map((e) => e['currency']! as String).toSet()) { quotes[code] = await widget.app.rates.latest(code); }
-      final preview = <DataRow>[];
+      final preview = <DbRow>[];
       for (final e in foreign) {
-        final q = quotes[e['currency']];
-        preview.add({...e, 'rate': q.rate as String, 'rate_date': q.date as String, 'rate_source': q.source as String, 'won': convertToWon(e['amount']! as String, q.rate as String, fractionDigits: currencyInfo(e['currency']! as String).fractionDigits).toString()});
+        final q = quotes[e['currency']]!;
+        preview.add({...e, 'rate': q.rate, 'rate_date': q.date, 'rate_source': q.source, 'won': convertToWon(e['amount']! as String, q.rate, fractionDigits: currencyInfo(e['currency']! as String).fractionDigits).toString()});
       }
       final old = totalWon(foreign), next = totalWon(preview);
       final info = quotes.values.map((q) => '${q.currency}: ${q.rate}원 · ${q.date} · ${q.source}${q.cached ? ' (저장된 환율)' : ''}').join('\n');
@@ -60,7 +61,7 @@ class _TripDetailState extends State<TripDetail> {
     catch (_) { if (mounted) message(context, '재계산하지 못했어요. 기존 경비는 유지됩니다.'); }
     finally { if (mounted) setState(() => recalculating = false); }
   }
-  @override Widget build(BuildContext context) => FutureBuilder<(DataRow?, List<DataRow>)>(future: data, builder: (context, snapshot) {
+  @override Widget build(BuildContext context) => FutureBuilder<(DbRow?, List<DbRow>)>(future: data, builder: (context, snapshot) {
     if (snapshot.hasError) return Scaffold(appBar: AppBar(), body: Center(child: TextButton(onPressed: reload, child: const Text('다시 불러오기'))));
     if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final (trip, expenses) = snapshot.data!;
@@ -75,7 +76,7 @@ class _TripDetailState extends State<TripDetail> {
       floatingActionButton: FloatingActionButton.extended(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ExpenseForm(widget.app, trip))), icon: const Icon(Icons.add), label: const Text('경비 추가')),
       body: ListView(padding: const EdgeInsets.fromLTRB(20, 12, 20, 110), children: [
         Wrap(spacing: 8, children: [Chip(label: Text('${country.flag} ${country.name}')), Chip(label: Text(dDay(trip['departure'] == null ? null : DateTime.parse(trip['departure']! as String), DateTime.now())))]), const SizedBox(height: 16),
-        Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: remaining.isNegative ? Theme.of(context).colorScheme.errorContainer : Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(remaining.isNegative ? '예산을 초과했어요' : '남은 여행 예산'), const SizedBox(height: 10), Text(formatWon(remaining.isNegative ? remaining.abs() : remaining), style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 20), Text('총 예산 ${formatWon(budget)}'), Text('예상 경비 ${formatWon(total)}'), const SizedBox(height: 16), LinearProgressIndicator(value: ratio.clamp(0, 1), minHeight: 8, borderRadius: BorderRadius.circular(8)), const SizedBox(height: 8), Text(budget == BigInt.zero ? '총 예산이 0원입니다. 예산을 설정해 주세요.' : '예산 사용률 ${(ratio * 100).toStringAsFixed(1)}%')])),
+        Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: remaining.isNegative ? Theme.of(context).colorScheme.errorContainer : Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(remaining.isNegative ? '예산을 초과했어요' : '남은 여행 예산'), const SizedBox(height: 10), Text(formatWon(remaining.isNegative ? remaining.abs() : remaining), style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800)), const SizedBox(height: 20), Text('총 예산 ${formatWon(budget)}'), Text('예상 경비 ${formatWon(total)}'), const SizedBox(height: 16), LinearProgressIndicator(value: ratio.clamp(0, 1).toDouble(), minHeight: 8, borderRadius: BorderRadius.circular(8)), const SizedBox(height: 8), Text(budget == BigInt.zero ? '총 예산이 0원입니다. 예산을 설정해 주세요.' : '예산 사용률 ${(ratio * 100).toStringAsFixed(1)}%')])),
         const SizedBox(height: 12), Wrap(spacing: 8, runSpacing: 8, children: [
           ActionChip(avatar: const Icon(Icons.checklist), label: const Text('준비물'), onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ChecklistScreen(widget.app, widget.tripId)))),
           ActionChip(avatar: const Icon(Icons.lightbulb_outline), label: const Text('여행 꿀팁'), onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TipsScreen(country)))),

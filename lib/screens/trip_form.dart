@@ -6,7 +6,7 @@ import '../widgets/common.dart';
 class TripForm extends StatefulWidget {
   const TripForm(this.app, {this.trip, super.key});
   final AppController app;
-  final DataRow? trip;
+  final DbRow? trip;
   @override State<TripForm> createState() => _TripFormState();
 }
 class _TripFormState extends State<TripForm> {

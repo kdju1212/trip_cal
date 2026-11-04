@@ -7,8 +7,8 @@ import '../widgets/common.dart';
 class ExpenseForm extends StatefulWidget {
   const ExpenseForm(this.app, this.trip, {this.expense, super.key});
   final AppController app;
-  final DataRow trip;
-  final DataRow? expense;
+  final DbRow trip;
+  final DbRow? expense;
   @override State<ExpenseForm> createState() => _ExpenseFormState();
 }
 class _ExpenseFormState extends State<ExpenseForm> {
@@ -93,7 +93,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
         const SizedBox(height: 12), DropdownButtonFormField<String>(initialValue: category, isExpanded: true, decoration: const InputDecoration(labelText: '카테고리'), items: [...cats.map((c) => DropdownMenuItem(value: c, child: Text(c))), const DropdownMenuItem(value: '__custom', child: Text('+ 카테고리 직접 입력'))], onChanged: (v) => setState(() => category = v!)),
         if (category == '__custom') Padding(padding: const EdgeInsets.only(top: 16), child: TextFormField(controller: customCategory, maxLength: 30, decoration: const InputDecoration(labelText: '새 카테고리 이름'), validator: (v) => v == null || v.trim().isEmpty ? '카테고리를 입력하세요.' : null)),
         const SizedBox(height: 24), Text('입력 통화', style: Theme.of(context).textTheme.titleSmall), const SizedBox(height: 10),
-        if (choices.length > 1) SegmentedButton<String>(segments: choices.map((c) => ButtonSegment(value: c, label: Text('$c ${currencyInfo(c).symbol}'))).toList(), selected: {currency}, onSelectionChanged: saving ? null : (s) => changeCurrency(s.first)) else const Chip(label: Text('KRW ₩ 원화')),
+        if (choices.length > 1) SegmentedButton<String>(showSelectedIcon: false, direction: choices.length > 2 || MediaQuery.sizeOf(context).width < 360 || MediaQuery.textScalerOf(context).scale(1) > 1.25 ? Axis.vertical : Axis.horizontal, segments: choices.map((c) => ButtonSegment(value: c, label: Text('$c ${currencyInfo(c).symbol}'))).toList(), selected: {currency}, onSelectionChanged: saving ? null : (s) => changeCurrency(s.first)) else const Chip(label: Text('KRW ₩ 원화')),
         const SizedBox(height: 20), TextFormField(controller: amount, keyboardType: TextInputType.numberWithOptions(decimal: currencyInfo(currency).fractionDigits > 0), inputFormatters: [NumberInputFormatter(decimals: currencyInfo(currency).fractionDigits)], onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: '금액', suffixText: currency, prefixText: '${currencyInfo(currency).symbol} '), validator: (s) { try { convertToWon(rawNumber(amount), '1', fractionDigits: currencyInfo(currency).fractionDigits); return null; } catch (_) { return '올바른 금액을 입력해 주세요.'; } }),
         if (currency != 'KRW') ...[
           const SizedBox(height: 20), Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

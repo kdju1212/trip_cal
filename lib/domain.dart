@@ -86,12 +86,12 @@ String dDay(DateTime? departure, DateTime now) {
 
 Country countryByCode(String code) => countries.firstWhere((c) => c.code == code);
 Country currencyInfo(String code) => countries.firstWhere((c) => c.currency == code);
-typedef DataRow = Map<String, Object?>;
+typedef DbRow = Map<String, Object?>;
 
-BigInt totalWon(Iterable<DataRow> expenses) => expenses.fold(BigInt.zero,
+BigInt totalWon(Iterable<DbRow> expenses) => expenses.fold(BigInt.zero,
     (sum, row) => sum + BigInt.parse(row['won']! as String));
 
-Map<String, BigInt> categoryTotals(Iterable<DataRow> expenses) {
+Map<String, BigInt> categoryTotals(Iterable<DbRow> expenses) {
   final result = <String, BigInt>{};
   for (final row in expenses) {
     final key = row['category']! as String;
@@ -104,11 +104,12 @@ Map<String, BigInt> categoryTotals(Iterable<DataRow> expenses) {
 double budgetRatio(BigInt spent, BigInt budget) {
   if (budget <= BigInt.zero) return spent > BigInt.zero ? 1 : 0;
   final basisPoints = spent * BigInt.from(10000) ~/ budget;
-  return basisPoints.clamp(BigInt.zero, BigInt.from(100000000)).toDouble() / 10000;
+  final bounded = basisPoints < BigInt.zero ? BigInt.zero : basisPoints > BigInt.from(100000000) ? BigInt.from(100000000) : basisPoints;
+  return bounded.toDouble() / 10000;
 }
 
 DateTime calendarDate(DateTime date) => DateTime.utc(date.year, date.month, date.day);
-bool notificationEligible(DataRow trip, DateTime now) => trip['departure'] != null &&
+bool notificationEligible(DbRow trip, DateTime now) => trip['departure'] != null &&
     !calendarDate(DateTime.parse(trip['departure']! as String)).isBefore(calendarDate(now));
 
 String dateText(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

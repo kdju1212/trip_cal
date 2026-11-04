@@ -13,12 +13,12 @@ class Home extends StatefulWidget {
   @override State<Home> createState() => _HomeState();
 }
 class _HomeState extends State<Home> {
-  late Future<List<DataRow>> data;
+  late Future<List<DbRow>> data;
   @override void initState() { super.initState(); reload(); widget.app.addListener(reload); }
   void reload() { data = load(); if (mounted) setState(() {}); }
-  Future<List<DataRow>> load() async {
+  Future<List<DbRow>> load() async {
     final trips = await widget.app.store.trips();
-    final result = <DataRow>[];
+    final result = <DbRow>[];
     for (final trip in trips) {
       final expenses = await widget.app.store.expenses(trip['id']! as int);
       result.add({...trip, 'remaining': BigInt.parse(trip['budget']! as String) - totalWon(expenses)});
@@ -30,7 +30,7 @@ class _HomeState extends State<Home> {
     appBar: AppBar(title: const Text('여행 준비 도우미', style: TextStyle(fontWeight: FontWeight.w800)), actions: [IconButton(tooltip: '설정', onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SettingsScreen(widget.app))), icon: const Icon(Icons.tune))]),
     floatingActionButton: FloatingActionButton.extended(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TripForm(widget.app))), icon: const Icon(Icons.add), label: const Text('새 여행')),
     bottomNavigationBar: const AdBanner(),
-    body: FutureBuilder<List<DataRow>>(future: data, builder: (context, snapshot) {
+    body: FutureBuilder<List<DbRow>>(future: data, builder: (context, snapshot) {
       if (snapshot.hasError) return Center(child: TextButton(onPressed: reload, child: const Text('여행을 불러오지 못했어요. 다시 시도')));
       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
       final trips = snapshot.data!;

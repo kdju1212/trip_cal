@@ -32,10 +32,16 @@ class Storage {
     await db.execute('CREATE INDEX expenses_trip ON expenses(trip_id)');
     await db.execute('CREATE INDEX checklist_trip ON checklist(trip_id)');
   }
-  Future<List<DataRow>> trips() => db.query('trips', orderBy: 'id DESC');
-  Future<List<DataRow>> expenses(int id) => db.query('expenses', where: 'trip_id = ?', whereArgs: [id], orderBy: 'id DESC');
-  Future<List<DataRow>> checklist(int id) => db.query('checklist', where: 'trip_id = ?', whereArgs: [id], orderBy: 'id');
-  Future<int> createTrip(DataRow trip) => db.transaction((txn) async {
+  Future<List<DbRow>> trips() => db.query('trips', orderBy: 'id DESC');
+  Future<List<DbRow>> expenses(int id) => db.query('expenses', where: 'trip_id = ?', whereArgs: [id], orderBy: 'id DESC');
+  Future<List<DbRow>> checklist(int id) => db.query('checklist', where: 'trip_id = ?', whereArgs: [id], orderBy: 'id');
+  void _validateTrip(DbRow trip) {
+    if (trip.containsKey('name') && (trip['name'] as String).trim().isEmpty) throw const FormatException('여행 이름을 입력해 주세요.');
+    if (trip.containsKey('country')) countryByCode(trip['country']! as String);
+    if (trip.containsKey('budget') && !RegExp(r'^\d+$').hasMatch(trip['budget']! as String)) throw const FormatException('예산은 0 이상이어야 합니다.');
+  }
+  Future<int> createTrip(DbRow trip) => db.transaction((txn) async {
+    _validateTrip(trip);
     final id = await txn.insert('trips', trip);
     final groups = {...defaultItems};
     if (trip['country'] != 'KR') {
@@ -50,7 +56,8 @@ class Storage {
     }
     return id;
   });
-  Future<void> updateTrip(int id, DataRow trip) async {
+  Future<void> updateTrip(int id, DbRow trip) async {
+    _validateTrip(trip);
     await db.update('trips', trip, where: 'id = ?', whereArgs: [id]);
   }
   Future<void> deleteTrip(int id) async {
@@ -78,8 +85,9 @@ class Storage {
     }
     return newId;
   });
-  Future<void> saveExpense(int tripId, DataRow row, {int? id}) async {
+  Future<void> saveExpense(int tripId, DbRow row, {int? id}) async {
     // Validate again at the persistence boundary; ignore caller-provided won.
+    if ((row['name']! as String).trim().isEmpty || (row['category']! as String).trim().isEmpty) throw const FormatException('경비 이름과 카테고리를 입력해 주세요.');
     final currency = row['currency']! as String;
     final rate = currency == 'KRW' ? '1' : row['rate']! as String;
     final won = convertToWon(row['amount']! as String, rate, fractionDigits: currencyInfo(currency).fractionDigits);
@@ -87,8 +95,12 @@ class Storage {
     if (id == null) { await db.insert('expenses', data); }
     else { await db.update('expenses', data, where: 'id = ? AND trip_id = ?', whereArgs: [id, tripId]); }
   }
-  Future<void> recalculate(int tripId, List<DataRow> preview) => db.transaction((txn) async {
+  Future<void> recalculate(int tripId, List<DbRow> preview) => db.transaction((txn) async {
     for (final row in preview) {
+      final current = await txn.query('expenses', where: 'id = ? AND trip_id = ?', whereArgs: [row['id'], tripId]);
+      if (current.isEmpty || current.single['amount'] != row['amount'] || current.single['currency'] != row['currency']) {
+        throw const FormatException('경비가 변경되었습니다. 환율 재계산을 다시 실행해 주세요.');
+      }
       final currency = row['currency']! as String;
       final won = convertToWon(row['amount']! as String, row['rate']! as String, fractionDigits: currencyInfo(currency).fractionDigits);
       await txn.update('expenses', {'rate': row['rate'], 'won': won.toString(), 'rate_date': row['rate_date'], 'rate_source': row['rate_source']}, where: 'id = ? AND trip_id = ?', whereArgs: [row['id'], tripId]);

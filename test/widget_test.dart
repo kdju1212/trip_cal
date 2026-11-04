@@ -52,7 +52,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
   testWidgets('0원과 예산 초과 차트는 음수 섹션 없이 표시된다', (tester) async {
-    final expenses = <DataRow>[{'category': '숙박비', 'won': '300000'}];
+    final expenses = <DbRow>[{'category': '숙박비', 'won': '300000'}];
     await tester.pumpWidget(wrap(Scaffold(body: ListView(children: [BudgetChart(expenses, BigInt.zero)]))));
     await tester.pumpAndSettle();
     expect(find.text('300,000원'), findsOneWidget);

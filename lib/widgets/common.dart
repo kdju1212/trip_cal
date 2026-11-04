@@ -37,7 +37,7 @@ class NumberInputFormatter extends TextInputFormatter {
     final integer = parts[0].replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
     final text = '$integer${parts.length > 1 ? '.${parts[1]}' : ''}';
     final right = newValue.text.length - newValue.selection.extentOffset;
-    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: (text.length - right).clamp(0, text.length)));
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: (text.length - right).clamp(0, text.length).toInt()));
   }
 }
 String rawNumber(TextEditingController c) => c.text.replaceAll(',', '').trim();

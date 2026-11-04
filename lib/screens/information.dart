@@ -42,12 +42,12 @@ const purchaseItems = [
 class PurchaseScreen extends StatefulWidget {
   const PurchaseScreen(this.app, this.trip, {super.key});
   final AppController app;
-  final DataRow trip;
+  final DbRow trip;
   @override State<PurchaseScreen> createState() => _PurchaseScreenState();
 }
 class _PurchaseScreenState extends State<PurchaseScreen> {
-  late Future<List<DataRow>> data = load();
-  Future<List<DataRow>> load() => widget.app.store.db.query('purchases', where: 'trip_id = ?', whereArgs: [widget.trip['id']]);
+  late Future<List<DbRow>> data = load();
+  Future<List<DbRow>> load() => widget.app.store.db.query('purchases', where: 'trip_id = ?', whereArgs: [widget.trip['id']]);
   // Verified merchant homepages, no affiliate IDs or claims of partnership.
   late final links = <String, String>{
     'esim': 'https://www.airalo.com/',
@@ -55,7 +55,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     'insurance': 'https://www.samsungfire.com/',
     if (widget.trip['country'] == 'JP') 'pass': 'https://japanrailpass.net/en/',
   };
-  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('필수 구매 안내')), body: FutureBuilder<List<DataRow>>(future: data, builder: (context, snapshot) {
+  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('필수 구매 안내')), body: FutureBuilder<List<DbRow>>(future: data, builder: (context, snapshot) {
     if (snapshot.hasError) return const Center(child: Text('구매 선택을 불러오지 못했어요.'));
     if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
     final domestic = widget.trip['country'] == 'KR';

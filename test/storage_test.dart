@@ -9,7 +9,7 @@ void main() {
   setUp(() async { store = await Storage.open(factory: databaseFactoryFfi, path: inMemoryDatabasePath); });
   tearDown(() async => store.db.close());
   Future<int> trip({String country = 'JP'}) => store.createTrip({'name': '테스트 여행', 'country': country, 'budget': '2000000', 'departure': null});
-  DataRow expense(String name, String amount, String currency, String rate) => {'name': name, 'category': '숙박비', 'amount': amount, 'currency': currency, 'rate': rate, 'rate_date': '2026-11-04', 'rate_source': '직접 입력'};
+  DbRow expense(String name, String amount, String currency, String rate) => {'name': name, 'category': '숙박비', 'amount': amount, 'currency': currency, 'rate': rate, 'rate_date': '2026-11-04', 'rate_source': '직접 입력'};
 
   test('출발일 없이 생성, 수정 후 원래 경비 통화 유지', () async {
     final id = await trip();
