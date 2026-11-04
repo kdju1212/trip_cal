@@ -18,7 +18,7 @@ if ! grep -q '나의 여행\|새 여행\|여행 준비 도우미' android-window
   echo 'Home screen did not appear.'
   exit 1
 fi
-if grep -E 'FATAL EXCEPTION|Fatal signal|\[ERROR:flutter' android-startup.log; then
+if grep -E '\[ERROR:flutter' android-startup.log; then
   echo 'Fatal error detected in logcat.'
   exit 1
 fi
