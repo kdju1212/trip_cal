@@ -7,6 +7,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val sideBySide = providers.gradleProperty("sideBySide").orNull == "true"
 val signingProperties = Properties()
 val signingFile = rootProject.file("key.properties")
 if (signingFile.exists()) signingFile.inputStream().use { signingProperties.load(it) }
@@ -25,6 +26,10 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.tripcal.app"
+        if (sideBySide) {
+            applicationIdSuffix = ".preview"
+        }
+        manifestPlaceholders["appLabel"] = if (sideBySide) "여행 준비 도우미 (새 버전)" else "여행 준비 도우미"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24
