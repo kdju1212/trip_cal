@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
+adb wait-for-device
+# Package manager may restart while a fresh Android 17 image finishes booting.
+sleep 30
 adb logcat -c
-adb install -r build/app/outputs/flutter-apk/app-x86_64-release.apk
+trap 'adb logcat -d -v time > android-startup.log || true' EXIT
+if ! adb install --no-streaming -r build/app/outputs/flutter-apk/app-x86_64-release.apk; then
+  sleep 30
+  adb wait-for-device
+  adb install --no-streaming -r build/app/outputs/flutter-apk/app-x86_64-release.apk
+fi
 adb shell am start -W -n com.tripcal.app/.MainActivity
 sleep 15
 adb logcat -d -v time > android-startup.log
