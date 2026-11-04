@@ -2,7 +2,7 @@ name: Flutter checks and Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'codex/**']
+    branches: [main]
   pull_request:
 permissions:
   contents: read
@@ -28,6 +28,17 @@ jobs:
         run: flutter doctor -v
       - name: Dependencies
         run: flutter pub get
+      - name: Format sources
+        run: dart format lib test
+      - name: Save resolved and formatted sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolved-flutter-sources
+          path: |
+            pubspec.lock
+            lib/
+            test/
+          retention-days: 7
       - name: Analyze
         run: flutter analyze --no-fatal-infos
       - name: Test
