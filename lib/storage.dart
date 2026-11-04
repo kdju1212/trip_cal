@@ -148,7 +148,7 @@ class Storage {
     // Validate again at the persistence boundary; ignore caller-provided won.
     if ((row['name']! as String).trim().isEmpty ||
         (row['category']! as String).trim().isEmpty) {
-      throw const FormatException('경비 이름과 카테고리를 입력해 주세요.');
+      throw const FormatException('경비 항목을 입력해 주세요.');
     }
     final currency = row['currency']! as String;
     final rate = currency == 'KRW' ? '1' : row['rate']! as String;
