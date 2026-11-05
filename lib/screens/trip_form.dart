@@ -25,6 +25,9 @@ class _TripFormState extends State<TripForm> {
   late DateTime? departure = widget.trip?['departure'] == null
       ? null
       : DateTime.parse(widget.trip!['departure']! as String);
+  late DateTime? endDate = widget.trip?['end_date'] == null
+      ? null
+      : DateTime.parse(widget.trip!['end_date']! as String);
   bool saving = false;
   @override
   void dispose() {
@@ -56,6 +59,7 @@ class _TripFormState extends State<TripForm> {
         'country': country.code,
         'budget': rawNumber(budget),
         'departure': departure == null ? null : dateText(departure!),
+        'end_date': endDate == null ? null : dateText(endDate!),
       };
       if (widget.trip == null) {
         await widget.app.store.createTrip(row);
@@ -141,25 +145,31 @@ class _TripFormState extends State<TripForm> {
                 child: ListTile(
                   leading: const Icon(Icons.calendar_today_outlined),
                   title: Text(
-                    departure == null ? '출발일 선택' : dateText(departure!),
+                    departure == null
+                        ? '여행 기간 선택'
+                        : endDate == null
+                            ? '${dateText(departure!)} (종료일 미설정)'
+                            : '${dateText(departure!)} ~ ${dateText(endDate!)}',
                   ),
                   subtitle: const Text('선택 사항'),
                   trailing: departure == null
                       ? null
                       : IconButton(
-                          tooltip: '출발일 지우기',
-                          onPressed: () => setState(() => departure = null),
+                          tooltip: '여행 기간 지우기',
+                          onPressed: () => setState(() { departure = null; endDate = null; }),
                           icon: const Icon(Icons.close),
                         ),
                   onTap: () async {
-                    final date = await showDatePicker(
+                    final range = await showDateRangePicker(
                       context: context,
-                      initialDate: departure ?? DateTime.now(),
+                      initialDateRange: departure == null ? null : DateTimeRange(start: departure!, end: endDate ?? departure!),
                       firstDate: DateTime(2000),
                       lastDate: DateTime(2100),
+                      helpText: '시작일과 종료일 선택',
+                      saveText: '완료',
                     );
-                    if (mounted && date != null) {
-                      setState(() => departure = date);
+                    if (mounted && range != null) {
+                      setState(() { departure = range.start; endDate = range.end; });
                     }
                   },
                 ),

@@ -235,6 +235,13 @@ class _TripDetailState extends State<TripDetail> {
                 ),
               ],
             ),
+            if (trip['departure'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(trip['end_date'] == null
+                    ? '출발일 ${trip['departure']}'
+                    : '여행 기간 ${trip['departure']} ~ ${trip['end_date']}'),
+              ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(24),

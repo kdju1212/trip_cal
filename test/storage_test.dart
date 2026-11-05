@@ -205,11 +205,22 @@ void main() {
       path: path,
     );
     expect((await upgraded.trips()).single['name'], '기존 여행');
+    expect((await upgraded.trips()).single['end_date'], isNull);
+    await upgraded.updateTrip(1, {'departure': '2027-01-10', 'end_date': '2027-01-15'});
+    expect((await upgraded.trips()).single['end_date'], '2027-01-15');
     expect((await upgraded.checklist(1)).single['checked'], 1);
     expect((await upgraded.checklist(1)).single['category'], '직접 추가');
     await upgraded.setSetting('theme', 'dark');
     await upgraded.db.close();
     await databaseFactoryFfi.deleteDatabase(path);
+  });
+  test('여행 기간을 저장하고 시작일보다 빠른 종료일은 거부한다', () async {
+    final id = await store.createTrip({'name': '여행', 'country': 'JP', 'budget': '0', 'departure': '2027-01-10', 'end_date': '2027-01-12'});
+    expect((await store.trips()).single['end_date'], '2027-01-12');
+    await expectLater(store.updateTrip(id, {'departure': '2027-01-10', 'end_date': '2027-01-09'}), throwsFormatException);
+    expect((await store.trips()).single['end_date'], '2027-01-12');
+    final copy = await store.duplicateTrip(id);
+    expect((await store.trips()).singleWhere((t) => t['id'] == copy)['end_date'], '2027-01-12');
   });
   test('여러 경비를 한 번에 저장하고 오류가 있으면 모두 취소한다', () async {
     final id = await trip();

@@ -11,11 +11,11 @@ class Storage {
     final db = await f.openDatabase(
       path ?? join(await f.getDatabasesPath(), 'trip_cal.db'),
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 3,
         onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
         onCreate: (db, version) async {
           await db.execute(
-            'CREATE TABLE trips (id INTEGER PRIMARY KEY, name TEXT NOT NULL, country TEXT NOT NULL, departure TEXT, budget TEXT NOT NULL)',
+            'CREATE TABLE trips (id INTEGER PRIMARY KEY, name TEXT NOT NULL, country TEXT NOT NULL, departure TEXT, end_date TEXT, budget TEXT NOT NULL)',
           );
           await db.execute(
             'CREATE TABLE expenses (id INTEGER PRIMARY KEY, trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE, name TEXT NOT NULL, category TEXT NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL, rate TEXT NOT NULL, won TEXT NOT NULL, rate_date TEXT, rate_source TEXT)',
@@ -31,6 +31,9 @@ class Storage {
               'ALTER TABLE checklist ADD COLUMN category TEXT NOT NULL DEFAULT "직접 추가"',
             );
             await _createV2(db);
+          }
+          if (old < 3) {
+            await db.execute('ALTER TABLE trips ADD COLUMN end_date TEXT');
           }
         },
       ),
@@ -75,6 +78,11 @@ class Storage {
     if (trip.containsKey('budget') &&
         !RegExp(r'^\d+$').hasMatch(trip['budget']! as String)) {
       throw const FormatException('예산은 0 이상이어야 합니다.');
+    }
+    if (trip['end_date'] != null &&
+        (trip['departure'] == null ||
+            (trip['end_date'] as String).compareTo(trip['departure'] as String) < 0)) {
+      throw const FormatException('종료일은 시작일보다 빠를 수 없습니다.');
     }
   }
 

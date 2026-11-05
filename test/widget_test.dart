@@ -95,6 +95,15 @@ void main() {
     expect(trips.single['budget'], '200000');
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('여행 기간 선택은 하나의 기간 달력을 연다', (tester) async {
+    await tester.pumpWidget(wrap(TripForm(app)));
+    await tester.ensureVisible(find.text('여행 기간 선택'));
+    await tester.tap(find.text('여행 기간 선택'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DateRangePickerDialog), findsOneWidget);
+    expect(find.text('시작일과 종료일 선택'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('국가 검색에서 유로 국가와 일본을 찾는다', (tester) async {
     await tester.pumpWidget(wrap(const Scaffold(body: CountryPicker())));
     await tester.enterText(find.byType(TextField), 'JPY');
