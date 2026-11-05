@@ -294,7 +294,8 @@ void main() {
     expect(totalWon(saved), BigInt.from(885000));
     expect(saved.where((r) => r['currency'] == 'JPY').single['rate'], '9.5');
     expect(saved.where((r) => r['name'] == '왕복 항공권'), hasLength(1));
-    await tester.tap(find.text('시작'));
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip)));
     await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
     await tester.pumpAndSettle();
     expect(find.text('500,000'), findsOneWidget);
