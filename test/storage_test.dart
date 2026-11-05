@@ -219,4 +219,33 @@ void main() {
     );
     expect((await store.expenses(id)).length, 2);
   });
+  test('기존 경비 편집과 새 항목을 원자적으로 저장하고 중복 저장하지 않는다', () async {
+    final id = await trip();
+    await store.saveExpense(id, expense('항공', '500000', 'KRW', '1'));
+    await store.saveExpense(id, expense('호텔', '30000', 'JPY', '9.5'));
+    final original = await store.expenses(id);
+    final airfare = original.firstWhere((e) => e['currency'] == 'KRW');
+    final hotel = original.firstWhere((e) => e['currency'] == 'JPY');
+    final edited = {...airfare, 'amount': '600000'};
+    final newRow = expense('식사', '10000', 'JPY', '9.5');
+    await store.saveExpenseChanges(id, original, [hotel, edited, newRow]);
+    final result = await store.expenses(id);
+    expect(result, hasLength(3));
+    expect(totalWon(result), BigInt.from(980000));
+    expect(result.firstWhere((e) => e['id'] == hotel['id'])['rate'], '9.5');
+    expect(result.firstWhere((e) => e['id'] == airfare['id'])['name'], '항공');
+    await expectLater(store.saveExpenseChanges(id, original, [hotel, edited]), throwsFormatException);
+    expect(await store.expenses(id), hasLength(3));
+    final now = await store.expenses(id);
+    await store.saveExpenseChanges(id, now, now.where((e) => e['id'] != hotel['id']).toList());
+    expect(await store.expenses(id), hasLength(2));
+  });
+  test('변경하지 않은 기존 경비의 원본 금액 및 환율 정보는 그대로 유지된다', () async {
+    final id = await trip();
+    await store.saveExpense(id, expense('호텔', '30000', 'JPY', '9.5'));
+    final before = await store.expenses(id);
+    await store.saveExpenseChanges(id, before, before);
+    expect(await store.expenses(id), before);
+  });
+
 }

@@ -5,6 +5,20 @@ import '../services/rates.dart';
 import '../widgets/common.dart';
 
 class _Entry {
+  _Entry([this.original]) {
+    if (original != null) {
+      category = original!['category']! as String;
+      if (category == '__custom') { custom.text = category; }
+      currency = original!['currency']! as String;
+      amount.text = groupedNumber(original!['amount']! as String);
+      if (currency != 'KRW') {
+        quote = RateQuote(currency, original!['rate']! as String,
+          original!['rate_date'] as String? ?? '',
+          original!['rate_source'] as String? ?? '저장된 환율');
+      }
+    }
+  }
+  final DbRow? original;
   String category = categories.first;
   String currency = 'KRW';
   final amount = TextEditingController();
@@ -13,6 +27,35 @@ class _Entry {
   bool loading = false;
   int generation = 0;
   String get label => category == '__custom' ? custom.text.trim() : category;
+  bool get matchesOriginal {
+    final old = original;
+    if (old == null) { return false; }
+    final foreign = old['currency'] != 'KRW';
+    return label == old['category'] && rawNumber(amount) == old['amount'] &&
+        currency == old['currency'] &&
+        (!foreign || (quote != null && quote!.rate == old['rate'] &&
+          quote!.date == (old['rate_date'] ?? '') &&
+          quote!.source == (old['rate_source'] ?? '저장된 환율')));
+  }
+  DbRow asRow() {
+    final old = original;
+    final untouched = matchesOriginal;
+    if (untouched && old != null) {
+      return {
+        for (final key in ['id', 'name', 'category', 'amount', 'currency', 'rate', 'rate_date', 'rate_source']) key: old[key],
+      };
+    }
+    return {
+      if (old != null) 'id': old['id'],
+      'name': old != null && label == old['category'] ? old['name'] : label,
+      'category': label,
+      'amount': rawNumber(amount),
+      'currency': currency,
+      'rate': currency == 'KRW' ? '1' : quote!.rate,
+      'rate_date': currency == 'KRW' ? null : quote!.date,
+      'rate_source': currency == 'KRW' ? 'KRW' : quote!.source,
+    };
+  }
   void dispose() {
     amount.dispose();
     custom.dispose();
@@ -29,9 +72,32 @@ class ExpenseBatchForm extends StatefulWidget {
 
 class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
   final form = GlobalKey<FormState>();
-  final entries = <_Entry>[_Entry()];
-  bool saving = false;
+  final entries = <_Entry>[];
+  List<DbRow> original = [];
+  bool saving = false, loadingEntries = true, loadFailed = false;
   late final country = countryByCode(widget.trip['country']! as String);
+  @override
+  void initState() {
+    super.initState();
+    loadEntries();
+  }
+
+  Future<void> loadEntries() async {
+    setState(() { loadingEntries = true; loadFailed = false; });
+    try {
+      final saved = await widget.app.store.expenses(widget.trip['id']! as int);
+      if (!mounted) { return; }
+      setState(() {
+        original = saved;
+        entries.addAll(saved.map((row) => _Entry(row)));
+        if (entries.isEmpty) { entries.add(_Entry()); }
+        loadingEntries = false;
+      });
+    } catch (_) {
+      if (mounted) { setState(() { loadingEntries = false; loadFailed = true; }); }
+    }
+  }
+
   @override
   void dispose() {
     for (final row in entries) {
@@ -137,6 +203,7 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
 
   BigInt? converted(_Entry row) {
     try {
+      if (row.matchesOriginal) { return BigInt.parse(row.original!['won']! as String); }
       if (row.currency != 'KRW' && row.quote == null) {
         return null;
       }
@@ -160,20 +227,8 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
     }
     setState(() => saving = true);
     final result = await guarded(context, () async {
-      final rows = entries
-          .map(
-            (row) => <String, Object?>{
-              'name': row.label,
-              'category': row.label,
-              'amount': rawNumber(row.amount),
-              'currency': row.currency,
-              'rate': row.currency == 'KRW' ? '1' : row.quote!.rate,
-              'rate_date': row.currency == 'KRW' ? null : row.quote!.date,
-              'rate_source': row.currency == 'KRW' ? 'KRW' : row.quote!.source,
-            },
-          )
-          .toList();
-      await widget.app.store.saveExpenses(widget.trip['id']! as int, rows);
+      final rows = entries.map((row) => row.asRow()).toList();
+      await widget.app.store.saveExpenseChanges(widget.trip['id']! as int, original, rows);
       await widget.app.changed();
       return true;
     });
@@ -190,7 +245,11 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('예상 경비 추가')),
-    body: Center(
+    body: loadingEntries
+      ? const Center(child: CircularProgressIndicator())
+      : loadFailed
+      ? Center(child: TextButton(onPressed: loadEntries, child: const Text('경비를 불러오지 못했어요. 다시 시도')))
+      : Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: Form(
@@ -198,7 +257,7 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              const Text('항목을 여러 개 추가해 한 번에 저장할 수 있어요.'),
+              const Text('저장된 경비가 위에 표시됩니다. 항목을 추가하거나 수정한 뒤 저장해 주세요.'),
               for (final row in entries) entryCard(row),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -209,6 +268,8 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                 label: const Text('항목 추가'),
               ),
               const SizedBox(height: 24),
+              remainingBudget(),
+              const SizedBox(height: 16),
               FilledButton(
                 onPressed: saving ? null : save,
                 child: Padding(
@@ -223,8 +284,38 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
     ),
   );
 
+  Widget remainingBudget() {
+    var total = BigInt.zero;
+    var incomplete = false;
+    for (final row in entries) {
+      final amount = converted(row);
+      if (amount == null) {
+        incomplete = true;
+      } else {
+        total += amount;
+      }
+    }
+    final remaining = BigInt.parse(widget.trip['budget']! as String) - total;
+    return Semantics(
+      liveRegion: true,
+      child: Card(child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('남은 예산', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 6),
+          Text(formatWon(remaining), style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: remaining.isNegative ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
+          )),
+          if (remaining.isNegative) Text('예산 초과 ${formatWon(remaining.abs())}'),
+          if (incomplete) const Text('금액이나 환율을 입력하지 않은 항목은 제외했어요.'),
+        ]),
+      )),
+    );
+  }
+
   Widget entryCard(_Entry row) {
-    final choices = {'KRW', if (country.currency != 'KRW') country.currency};
+    final choices = {'KRW', if (country.currency != 'KRW') country.currency, row.currency};
     final won = converted(row);
     final compactDecoration = const InputDecoration(
       isDense: true,
@@ -248,7 +339,7 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                     isExpanded: true,
                     decoration: compactDecoration.copyWith(labelText: '항목'),
                     items: [
-                      ...categories.map(
+                      ...{...categories, if (row.category != '__custom') row.category}.map(
                         (c) => DropdownMenuItem(
                           value: c,
                           child: Text(c, overflow: TextOverflow.ellipsis),
@@ -298,7 +389,7 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                     },
                   ),
                 ),
-                if (entries.length > 1)
+                if (entries.length > 1 || row.original != null)
                   IconButton(
                     tooltip: '항목 삭제',
                     visualDensity: VisualDensity.compact,

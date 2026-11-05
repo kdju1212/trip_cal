@@ -233,8 +233,9 @@ void main() {
       ),
     );
     app = AppController(store, rates: RateService(store, client: client));
-    final trip = {'id': 1, 'country': 'JP'};
+    final trip = {'id': 1, 'country': 'JP', 'budget': '1000000'};
     await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip)));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('KRW ₩'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('JPY ¥').last);
@@ -259,4 +260,64 @@ void main() {
     expect(find.text('원화 환산 285,000원'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('저장한 경비를 위에 유지하고 남은 예산을 실시간으로 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final id = (await tester.runAsync(() => store.createTrip({'name': '일본', 'country': 'JP', 'budget': '2000000'})))!;
+    await tester.runAsync(() async {
+      await store.saveExpense(id, {'name':'왕복 항공권','category':'항공권','amount':'500000','currency':'KRW','rate':'1','rate_source':'KRW'});
+      await store.saveExpense(id, {'name':'호텔','category':'숙박비','amount':'30000','currency':'JPY','rate':'9.5','rate_date':'2026-11-04','rate_source':'직접 입력'});
+    });
+    final trip = (await tester.runAsync(store.trips))!.single;
+    await tester.pumpWidget(wrap(Builder(builder: (context) => Scaffold(body: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ExpenseBatchForm(app, trip))), child: const Text('시작'))))));
+    await tester.tap(find.text('시작'));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    expect(find.text('500,000'), findsOneWidget);
+    expect(find.text('30,000'), findsOneWidget);
+    expect(find.text('1,215,000원'), findsOneWidget);
+    expect(tester.getRect(find.text('남은 예산')).top, lessThan(tester.getRect(find.text('2개 경비 저장')).top));
+    await tester.tap(find.text('항목 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('금액이나 환율을 입력하지 않은 항목은 제외했어요.'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).last, '100000');
+    await tester.pump();
+    expect(find.text('1,115,000원'), findsOneWidget);
+    await tester.ensureVisible(find.text('3개 경비 저장'));
+    await tester.tap(find.text('3개 경비 저장'));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    final saved = (await tester.runAsync(() => store.expenses(id)))!;
+    expect(saved, hasLength(3));
+    expect(totalWon(saved), BigInt.from(885000));
+    expect(saved.where((r) => r['currency'] == 'JPY').single['rate'], '9.5');
+    expect(saved.where((r) => r['name'] == '왕복 항공권'), hasLength(1));
+    await tester.tap(find.text('시작'));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    expect(find.text('500,000'), findsOneWidget);
+    expect(find.text('30,000'), findsOneWidget);
+    expect(find.text('100,000'), findsOneWidget);
+    expect(find.text('1,115,000원'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('저장된 외화 경비는 기존 원화 환산액 그대로 남은 예산에 반영한다', (tester) async {
+    final id = (await tester.runAsync(() => store.createTrip({'name': '일본', 'country': 'JP', 'budget': '1000000'})))!;
+    await tester.runAsync(() async {
+      await store.saveExpense(id, {'name':'호텔','category':'숙박비','amount':'30000','currency':'JPY','rate':'9.5','rate_date':'2026-11-04','rate_source':'직접 입력'});
+      await store.db.update('expenses', {'won':'287000'}, where:'trip_id = ?', whereArgs:[id]);
+    });
+    final trip = (await tester.runAsync(store.trips))!.single;
+    await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip)));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('남은 예산'));
+    expect(find.text('713,000원'), findsOneWidget);
+    expect(find.text('원화 환산 287,000원'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
 }

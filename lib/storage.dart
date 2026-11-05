@@ -175,6 +175,42 @@ class Storage {
     });
   }
 
+  /// Apply edits, additions and removals together only if the loaded data is unchanged.
+  Future<void> saveExpenseChanges(int tripId, List<DbRow> original, List<DbRow> rows) async {
+    final byId = <int, DbRow>{for (final row in original) row['id']! as int: row};
+    final used = <int>{};
+    final prepared = <(int?, DbRow)>[];
+    for (final row in rows) {
+      final id = row['id'] as int?;
+      if (id != null && (!byId.containsKey(id) || !used.add(id))) {
+        throw const FormatException('경비가 변경되었습니다. 다시 불러와 주세요.');
+      }
+      final values = Map<String, Object?>.from(row)..remove('id');
+      prepared.add((id, _expenseData(tripId, values)));
+    }
+    const fields = ['name', 'category', 'amount', 'currency', 'rate', 'won', 'rate_date', 'rate_source'];
+    const editableFields = ['name', 'category', 'amount', 'currency', 'rate', 'rate_date', 'rate_source'];
+    await db.transaction((txn) async {
+      final current = await txn.query('expenses', where: 'trip_id = ?', whereArgs: [tripId]);
+      if (current.length != original.length || current.any((row) {
+        final old = byId[row['id']];
+        return old == null || fields.any((field) => old[field] != row[field]);
+      })) {
+        throw const FormatException('경비가 변경되었습니다. 다시 불러와 주세요.');
+      }
+      for (final id in byId.keys.where((id) => !used.contains(id))) {
+        await txn.delete('expenses', where: 'id = ? AND trip_id = ?', whereArgs: [id, tripId]);
+      }
+      for (final (id, values) in prepared) {
+        if (id == null) {
+          await txn.insert('expenses', values);
+        } else if (editableFields.any((field) => values[field] != byId[id]![field])) {
+          await txn.update('expenses', values, where: 'id = ? AND trip_id = ?', whereArgs: [id, tripId]);
+        }
+      }
+    });
+  }
+
   Future<void> saveExpense(int tripId, DbRow row, {int? id}) async {
     final data = _expenseData(tripId, row);
     if (id == null) {
