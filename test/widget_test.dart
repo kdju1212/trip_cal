@@ -48,8 +48,8 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final id = (await tester.runAsync(() => store.createTrip({'name': '일본', 'country': 'JP', 'budget': '100000'})))!;
-    await tester.pumpWidget(wrap(ChecklistScreen(app, id)));
+    final id = (await tester.runAsync(() => store.createTrip({'name': '일본', 'country': 'JP', 'budget': '100000', 'departure': '2027-01-03', 'end_date': '2027-01-06'})))!;
+    await tester.pumpWidget(wrap(ChecklistScreen(app, id, country: countryByCode('JP'), departure: '2027-01-03', endDate: '2027-01-06')));
     await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(find.text('eSIM · 유심 · 로밍 중 필요한 방식 확인')).dy,
@@ -59,8 +59,8 @@ void main() {
     await tester.tap(find.text('eSIM 사러가기'));
     await tester.pumpAndSettle();
     expect(find.text('eSIM 사러가기'), findsOneWidget);
-    expect(find.text('해외여행 eSIM 3일'), findsOneWidget);
-    expect(find.text('해외여행 eSIM 5일'), findsOneWidget);
+    expect(find.text('여행 기간 2027-01-03 ~ 2027-01-06 · 총 4일'), findsOneWidget);
+    expect(find.text('일본 eSIM 4일'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets('새 여행은 출발일 입력 없이 저장할 수 있다', (tester) async {

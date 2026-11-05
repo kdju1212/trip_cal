@@ -294,7 +294,7 @@ class _TripDetailState extends State<TripDetail> {
                     context,
                     MaterialPageRoute<void>(
                       builder: (_) =>
-                          ChecklistScreen(widget.app, widget.tripId, country: country),
+                          ChecklistScreen(widget.app, widget.tripId, country: country, departure: trip['departure'] as String?, endDate: trip['end_date'] as String?),
                     ),
                   ),
                 ),

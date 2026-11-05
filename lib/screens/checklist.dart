@@ -5,10 +5,12 @@ import '../widgets/common.dart';
 import 'sim_shopping.dart';
 
 class ChecklistScreen extends StatefulWidget {
-  const ChecklistScreen(this.app, this.tripId, {super.key, this.country});
+  const ChecklistScreen(this.app, this.tripId, {super.key, this.country, this.departure, this.endDate});
   final AppController app;
   final int tripId;
   final Country? country;
+  final String? departure;
+  final String? endDate;
   @override
   State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
@@ -240,12 +242,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: OutlinedButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: false))),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: false, departure: widget.departure, endDate: widget.endDate))),
                     child: const Text('유심 사러가기'),
                   )),
                   const SizedBox(width: 8),
                   Expanded(child: OutlinedButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: true))),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: true, departure: widget.departure, endDate: widget.endDate))),
                     child: const Text('eSIM 사러가기'),
                   )),
                 ]),

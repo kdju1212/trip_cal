@@ -2,6 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trip_cal/domain.dart';
 
 void main() {
+  test('여행 일수는 시작일과 종료일을 포함한다', () {
+    expect(tripCalendarDays('2027-01-03', '2027-01-05'), 3);
+    expect(tripCalendarDays('2027-01-03', '2027-01-03'), 1);
+    expect(tripCalendarDays('2027-12-31', '2028-01-02'), 3);
+    expect(tripCalendarDays('2027-01-05', '2027-01-03'), isNull);
+    expect(tripCalendarDays('2027-01-03', null), isNull);
+  });
   test('혼합 통화 예산은 원래 금액과 적용 환율로 계산한다', () {
     final total =
         convertToWon('500000', '1', fractionDigits: 0) +

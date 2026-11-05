@@ -149,6 +149,16 @@ double budgetRatio(BigInt spent, BigInt budget) {
 
 DateTime calendarDate(DateTime date) =>
     DateTime.utc(date.year, date.month, date.day);
+
+/// Calendar days including both departure and return, independent of DST.
+int? tripCalendarDays(String? start, String? end) {
+  if (start == null || end == null) return null;
+  final first = DateTime.tryParse(start);
+  final last = DateTime.tryParse(end);
+  if (first == null || last == null) return null;
+  final difference = calendarDate(last).difference(calendarDate(first)).inDays;
+  return difference < 0 ? null : difference + 1;
+}
 bool notificationEligible(DbRow trip, DateTime now) =>
     trip['departure'] != null &&
     !calendarDate(
