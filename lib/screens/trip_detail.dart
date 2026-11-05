@@ -67,7 +67,7 @@ class _TripDetailState extends State<TripDetail> {
       if (!await confirm(
         context,
         '여행을 삭제할까요?',
-        '경비, 준비물과 구매 안내 선택이 함께 삭제됩니다. 복구할 수 없어요.',
+        '경비와 체크리스트가 함께 삭제됩니다. 복구할 수 없어요.',
         action: '삭제',
       )) {
         return;
@@ -282,12 +282,12 @@ class _TripDetailState extends State<TripDetail> {
               children: [
                 ActionChip(
                   avatar: const Icon(Icons.checklist),
-                  label: const Text('준비물'),
+                  label: const Text('체크리스트'),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute<void>(
                       builder: (_) =>
-                          ChecklistScreen(widget.app, widget.tripId),
+                          ChecklistScreen(widget.app, widget.tripId, country: country),
                     ),
                   ),
                 ),
@@ -298,16 +298,6 @@ class _TripDetailState extends State<TripDetail> {
                     context,
                     MaterialPageRoute<void>(
                       builder: (_) => TipsScreen(country),
-                    ),
-                  ),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.shopping_bag_outlined),
-                  label: const Text('구매 안내'),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => PurchaseScreen(widget.app, trip),
                     ),
                   ),
                 ),

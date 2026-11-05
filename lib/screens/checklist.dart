@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../controller.dart';
 import '../domain.dart';
 import '../widgets/common.dart';
+import 'sim_shopping.dart';
 
 class ChecklistScreen extends StatefulWidget {
-  const ChecklistScreen(this.app, this.tripId, {super.key});
+  const ChecklistScreen(this.app, this.tripId, {super.key, this.country});
   final AppController app;
   final int tripId;
+  final Country? country;
   @override
   State<ChecklistScreen> createState() => _ChecklistScreenState();
 }
@@ -42,7 +44,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     final result = await showDialog<DbRow>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(item == null ? '준비물 추가' : '준비물 수정'),
+        title: Text(item == null ? '항목 추가' : '항목 수정'),
         content: SingleChildScrollView(
           child: Form(
             key: form,
@@ -52,7 +54,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 TextFormField(
                   controller: name,
                   maxLength: 80,
-                  decoration: const InputDecoration(labelText: '준비물 이름'),
+                  decoration: const InputDecoration(labelText: '항목 이름'),
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? '이름을 입력해 주세요.' : null,
                 ),
@@ -111,11 +113,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('여행 준비물')),
+    appBar: AppBar(title: const Text('여행 체크리스트')),
     floatingActionButton: FloatingActionButton.extended(
       onPressed: edit,
       icon: const Icon(Icons.add),
-      label: const Text('준비물 추가'),
+      label: const Text('항목 추가'),
     ),
     body: FutureBuilder<List<DbRow>>(
       future: data,
@@ -167,7 +169,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
               child: Text('eSIM·유심·로밍은 필요한 방식만 선택하면 됩니다. 모두 구매할 필요는 없어요.'),
             ),
             if (items.isEmpty)
-              const EmptyState('준비물을 추가해 보세요', '여행에 필요한 것만 자유롭게 관리하세요.'),
+              const EmptyState('체크리스트 항목을 추가해 보세요', '여행에 필요한 것만 자유롭게 관리하세요.'),
             for (final group in groups) ...[
               SectionTitle(group),
               ...items
@@ -209,7 +211,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                               }
                               if (!await confirm(
                                     context,
-                                    '준비물을 삭제할까요?',
+                                    '항목을 삭제할까요?',
                                     item['name']! as String,
                                     action: '삭제',
                                   ) ||
@@ -234,6 +236,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                       ),
                     ),
                   ),
+              if (group == connectivityGroup) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: OutlinedButton(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: false))),
+                    child: const Text('유심 사러가기'),
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: OutlinedButton(
+                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: true))),
+                    child: const Text('eSIM 사러가기'),
+                  )),
+                ]),
+              ],
             ],
           ],
         );

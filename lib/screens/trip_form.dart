@@ -168,7 +168,7 @@ class _TripFormState extends State<TripForm> {
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    '국가를 바꿔도 기존 경비와 준비물은 유지됩니다. 필요한 준비물은 직접 추가해 주세요.',
+                    '국가를 바꿔도 기존 경비와 체크리스트는 유지됩니다. 필요한 항목은 직접 추가해 주세요.',
                   ),
                 ),
               const SizedBox(height: 28),

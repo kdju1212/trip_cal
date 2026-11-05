@@ -54,6 +54,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(find.text('eSIM · 유심 · 로밍 중 필요한 방식 확인')).dy,
         lessThan(tester.getTopLeft(find.text('신분증')).dy));
+    expect(find.text('유심 사러가기'), findsOneWidget);
+    expect(find.text('eSIM 사러가기'), findsOneWidget);
+    await tester.tap(find.text('eSIM 사러가기'));
+    await tester.pumpAndSettle();
+    expect(find.text('eSIM 사러가기'), findsOneWidget);
+    expect(find.text('해외여행 eSIM 3일'), findsOneWidget);
+    expect(find.text('해외여행 eSIM 5일'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets('새 여행은 출발일 입력 없이 저장할 수 있다', (tester) async {

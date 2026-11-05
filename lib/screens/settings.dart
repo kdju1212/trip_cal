@@ -153,7 +153,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('남은 준비물 개수 표시'),
+                title: const Text('남은 체크리스트 항목 수 표시'),
                 value: remaining,
                 onChanged: busy
                     ? null
@@ -190,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         applicationVersion: '1.0.0',
                         children: [
                           const Text(
-                            '로그인 없이 여행 예산과 준비물을 관리합니다. 데이터는 이 기기의 SQLite DB에 저장됩니다.',
+                            '로그인 없이 여행 예산과 체크리스트를 관리합니다. 데이터는 이 기기의 SQLite DB에 저장됩니다.',
                           ),
                         ],
                       ),
@@ -214,7 +214,7 @@ class PrivacyScreen extends StatelessWidget {
         Text('개발용 개인정보 안내', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 16),
         const Text(
-          '여행·예산·경비·준비물은 기기 내부 DB에 저장하며 개발자의 서버로 전송하지 않습니다. 회원가입과 로그인이 없습니다. 앱을 삭제하면 로컬 데이터가 삭제되며 자동 클라우드 백업은 사용하지 않습니다.\n\n환율을 조회하면 통화 코드와 네트워크 요청 정보(IP 주소 등)가 Frankfurter에 전달됩니다. 여행 이름과 경비 내역은 전송하지 않습니다.\n\n외부 링크는 기기의 브라우저에서 열리며 해당 사이트의 개인정보처리방침이 적용됩니다.\n\n정식 출시 전 운영자명, 연락처, 처리 목적·보유기간·이용자 권리와 공개 정책 URL을 확정하고 Google Play 신고 내용과 일치시켜야 합니다.',
+          '여행·예산·경비·체크리스트는 기기 내부 DB에 저장하며 개발자의 서버로 전송하지 않습니다. 회원가입과 로그인이 없습니다. 앱을 삭제하면 로컬 데이터가 삭제되며 자동 클라우드 백업은 사용하지 않습니다.\n\n환율을 조회하면 통화 코드와 네트워크 요청 정보(IP 주소 등)가 Frankfurter에 전달됩니다. 여행 이름과 경비 내역은 전송하지 않습니다.\n\n외부 링크는 기기의 브라우저에서 열리며 해당 사이트의 개인정보처리방침이 적용됩니다.\n\n정식 출시 전 운영자명, 연락처, 처리 목적·보유기간·이용자 권리와 공개 정책 URL을 확정하고 Google Play 신고 내용과 일치시켜야 합니다.',
         ),
         TextButton(
           onPressed: () => openExternal(context, 'https://frankfurter.dev/'),

@@ -128,7 +128,7 @@ class _HomeState extends State<Home> {
                     ),
                     SizedBox(height: 12),
                     Text(
-                      '예산부터 준비물까지, 떠나기 전 한곳에서.',
+                      '예산부터 체크리스트까지, 떠나기 전 한곳에서.',
                       style: TextStyle(color: Colors.white, height: 1.5),
                     ),
                   ],
