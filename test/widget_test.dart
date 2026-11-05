@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:trip_cal/controller.dart';
@@ -7,6 +9,7 @@ import 'package:trip_cal/screens/trip_form.dart';
 import 'package:trip_cal/screens/expense_batch_form.dart';
 import 'package:trip_cal/screens/trip_detail.dart';
 import 'package:trip_cal/storage.dart';
+import 'package:trip_cal/services/rates.dart';
 import 'package:trip_cal/widgets/budget_chart.dart';
 
 void main() {
@@ -195,15 +198,58 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final id = (await tester.runAsync(() => store.createTrip({'name': '국내 여행', 'country': 'KR', 'budget': '1000000'})))!;
-    final trip = (await tester.runAsync(store.trips))!.firstWhere((r) => r['id'] == id);
+    final id = (await tester.runAsync(
+      () => store.createTrip({
+        'name': '국내 여행',
+        'country': 'KR',
+        'budget': '1000000',
+      }),
+    ))!;
+    final trip = (await tester.runAsync(
+      store.trips,
+    ))!.firstWhere((r) => r['id'] == id);
     await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip), scale: 1.3));
     await tester.pumpAndSettle();
-    final category = tester.getRect(find.byType(DropdownButtonFormField<String>).first);
+    final category = tester.getRect(
+      find.byType(DropdownButtonFormField<String>).first,
+    );
     final amount = tester.getRect(find.byType(TextFormField).first);
     expect(amount.left, greaterThan(category.left));
     expect(amount.top, category.top);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('각 줄의 통화를 선택하고 취소하면 입력 금액이 유지된다', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    app.dispose();
+    app.rates.client.close();
+    final client = MockClient((_) async => http.Response('{"base":"JPY","quote":"KRW","rate":9.5,"date":"2026-11-04"}', 200));
+    app = AppController(store, rates: RateService(store, client: client));
+    final trip = {'id': 1, 'country': 'JP'};
+    await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip)));
+    await tester.tap(find.text('KRW ₩'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('JPY ¥').last);
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '30000');
+    await tester.pump();
+    expect(find.text('원화 환산 285,000원'), findsOneWidget);
+    await tester.tap(find.text('항목 추가'));
+    await tester.pumpAndSettle();
+    expect(find.text('KRW ₩'), findsOneWidget);
+    await tester.tap(find.text('JPY ¥').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('KRW ₩').last);
+    await tester.pumpAndSettle();
+    expect(find.text('통화를 바꿀까요?'), findsOneWidget);
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    expect(find.text('30,000'), findsOneWidget);
+    expect(find.text('원화 환산 285,000원'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
