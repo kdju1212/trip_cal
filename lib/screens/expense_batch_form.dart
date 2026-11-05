@@ -248,16 +248,20 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                     isExpanded: true,
                     decoration: compactDecoration.copyWith(labelText: '항목'),
                     items: [
-                      ...categories.map((c) => DropdownMenuItem(
-                        value: c,
-                        child: Text(c, overflow: TextOverflow.ellipsis),
-                      )),
+                      ...categories.map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c, overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
                       const DropdownMenuItem(
                         value: '__custom',
                         child: Text('직접 입력', overflow: TextOverflow.ellipsis),
                       ),
                     ],
-                    onChanged: saving ? null : (value) => setState(() => row.category = value!),
+                    onChanged: saving
+                        ? null
+                        : (value) => setState(() => row.category = value!),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -265,13 +269,28 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                   flex: 6,
                   child: TextFormField(
                     controller: row.amount,
-                    keyboardType: TextInputType.numberWithOptions(decimal: currencyInfo(row.currency).fractionDigits > 0),
-                    inputFormatters: [NumberInputFormatter(decimals: currencyInfo(row.currency).fractionDigits)],
+                    keyboardType: TextInputType.numberWithOptions(
+                      decimal: currencyInfo(row.currency).fractionDigits > 0,
+                    ),
+                    inputFormatters: [
+                      NumberInputFormatter(
+                        decimals: currencyInfo(row.currency).fractionDigits,
+                      ),
+                    ],
                     onChanged: (_) => setState(() {}),
-                    decoration: compactDecoration.copyWith(labelText: '금액', prefixText: '${currencyInfo(row.currency).symbol} '),
+                    decoration: compactDecoration.copyWith(
+                      labelText: '금액',
+                      prefixText: '${currencyInfo(row.currency).symbol} ',
+                    ),
                     validator: (_) {
                       try {
-                        convertToWon(rawNumber(row.amount), '1', fractionDigits: currencyInfo(row.currency).fractionDigits);
+                        convertToWon(
+                          rawNumber(row.amount),
+                          '1',
+                          fractionDigits: currencyInfo(
+                            row.currency,
+                          ).fractionDigits,
+                        );
                         return null;
                       } catch (_) {
                         return '금액 확인';
@@ -283,10 +302,17 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                   IconButton(
                     tooltip: '항목 삭제',
                     visualDensity: VisualDensity.compact,
-                    onPressed: saving ? null : () {
-                      setState(() { entries.remove(row); row.generation++; });
-                      WidgetsBinding.instance.addPostFrameCallback((_) => row.dispose());
-                    },
+                    onPressed: saving
+                        ? null
+                        : () {
+                            setState(() {
+                              entries.remove(row);
+                              row.generation++;
+                            });
+                            WidgetsBinding.instance.addPostFrameCallback(
+                              (_) => row.dispose(),
+                            );
+                          },
                     icon: const Icon(Icons.close),
                   ),
               ],
@@ -297,8 +323,11 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                 child: TextFormField(
                   controller: row.custom,
                   maxLength: 30,
-                  decoration: compactDecoration.copyWith(labelText: '직접 입력할 항목'),
-                  validator: (v) => v == null || v.trim().isEmpty ? '항목을 입력하세요.' : null,
+                  decoration: compactDecoration.copyWith(
+                    labelText: '직접 입력할 항목',
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? '항목을 입력하세요.' : null,
                 ),
               ),
             if (choices.length > 1)
@@ -309,13 +338,21 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                   DropdownButton<String>(
                     value: row.currency,
                     underline: const SizedBox.shrink(),
-                    items: choices.map((code) => DropdownMenuItem(
-                      value: code,
-                      child: Text('$code ${currencyInfo(code).symbol}'),
-                    )).toList(),
-                    onChanged: saving ? null : (value) {
-                      if (value != null) { changeCurrency(row, value); }
-                    },
+                    items: choices
+                        .map(
+                          (code) => DropdownMenuItem(
+                            value: code,
+                            child: Text('$code ${currencyInfo(code).symbol}'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: saving
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              changeCurrency(row, value);
+                            }
+                          },
                   ),
                 ],
               ),
@@ -326,20 +363,28 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                     : '1 ${row.currency} = ${row.quote!.rate}원 · ${row.quote!.date} · ${row.quote!.source}${row.quote!.cached ? ' (저장된 환율)' : ''}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              Wrap(spacing: 8, children: [
-                TextButton.icon(
-                  onPressed: saving || row.loading ? null : () => fetch(row),
-                  icon: const Icon(Icons.refresh),
-                  label: Text(row.loading ? '조회 중…' : '환율 새로고침'),
-                ),
-                TextButton(
-                  onPressed: saving || row.loading ? null : () => manualRate(row),
-                  child: const Text('직접 입력'),
-                ),
-              ]),
+              Wrap(
+                spacing: 8,
+                children: [
+                  TextButton.icon(
+                    onPressed: saving || row.loading ? null : () => fetch(row),
+                    icon: const Icon(Icons.refresh),
+                    label: Text(row.loading ? '조회 중…' : '환율 새로고침'),
+                  ),
+                  TextButton(
+                    onPressed: saving || row.loading
+                        ? null
+                        : () => manualRate(row),
+                    child: const Text('직접 입력'),
+                  ),
+                ],
+              ),
               Text(
                 '원화 환산 ${won == null ? '—' : formatWon(won)}',
-                style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ],

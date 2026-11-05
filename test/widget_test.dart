@@ -226,14 +226,21 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     app.dispose();
     app.rates.client.close();
-    final client = MockClient((_) async => http.Response('{"base":"JPY","quote":"KRW","rate":9.5,"date":"2026-11-04"}', 200));
+    final client = MockClient(
+      (_) async => http.Response(
+        '{"base":"JPY","quote":"KRW","rate":9.5,"date":"2026-11-04"}',
+        200,
+      ),
+    );
     app = AppController(store, rates: RateService(store, client: client));
     final trip = {'id': 1, 'country': 'JP'};
     await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip)));
     await tester.tap(find.text('KRW ₩'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('JPY ¥').last);
-    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).first, '30000');
     await tester.pump();
@@ -252,5 +259,4 @@ void main() {
     expect(find.text('원화 환산 285,000원'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
-
 }

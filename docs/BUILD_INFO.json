@@ -12,5 +12,17 @@
   "ads": "Google test IDs, UMP-gated",
   "android_emulator": "Android 15 release startup passed; Android 17 emulator setup was inconclusive",
   "release_shrinking": "disabled to retain WorkManager Room constructors",
-  "real_device": "User reported the fixed APK opens on Galaxy S26 running Android 17"
+  "real_device": "User reported the fixed APK opens on Galaxy S26 running Android 17",
+  "expense_batch_preview": {
+    "source_commit": "005958c35d012fdee897c2035b8056863214c0cb",
+    "workflow_run": "https://github.com/kdju1212/trip_cal/actions/runs/42018215637",
+    "android_package": "com.tripcal.app.preview",
+    "app_label": "여행 준비 도우미 (새 버전)",
+    "apk": "build/app/outputs/flutter-apk/trip-cal-preview-arm64.apk",
+    "bytes": 27516355,
+    "sha256": "db250b45c811b8b59971025dbb9de57e2e05a48a7b23b948b15278c99845db3f",
+    "automated_tests": 29,
+    "data": "Separate app storage; existing app data is not modified or copied.",
+    "android_emulator": "Android 15: existing and preview apps both install and reach home screen"
+  }
 }

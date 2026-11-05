@@ -18,6 +18,7 @@ flutter run
 ## 구현 범위
 
 - 여행 생성·수정·삭제 확인·복제, 출발일 선택, 국가 검색 (28개 국가/지역)
+- 경비 이름을 따로 입력하지 않고 항목과 금액을 한 줄에 표시하며, 아래에서 줄을 추가해 한 번에 저장
 - 경비별 KRW/현지 통화, 기존 국가의 통화 보존, 경비 CRUD·사용자 카테고리
 - Decimal/BigInt 환산, 정수 원화 반올림, 0원 예산·초과 처리
 - Frankfurter v2 참고 환율, 기준 날짜·출처·직접 입력·SQLite 캐시·10초 타임아웃·동시 요청 병합
@@ -61,3 +62,15 @@ GitHub Actions의 **Flutter checks and Android APK**가 위 정적 분석·테�
 `sqflite` 2.4.5, `decimal` 3.2.6, `fl_chart` 1.3.0, `http` 1.6.0, `url_launcher` 6.3.3, `google_mobile_ads` 9.2.0, `path` 1.9.1, Flutter localization/intl. 상태는 Flutter ChangeNotifier로 관리하고 Android 알림은 Kotlin MethodChannel로 구현했습니다. 테스트는 `flutter_test`, `sqflite_common_ffi` 2.4.5를 사용합니다. 실제 확정 버전은 `pubspec.lock`에 저장했습니다.
 
 릴리스 APK의 코드 축소는 Android WorkManager 초기화에 필요한 생성자가 제거되는 문제를 피하기 위해 비활성화되어 있습니다. APK 또는 AAB를 만들 때 `--no-shrink`를 유지하세요.
+
+## 기존 앱과 함께 설치하는 테스트 버전
+
+CI의 `trip-cal-side-by-side-apk`는 앱 ID가 `com.tripcal.app.preview`인 별도 테스트 앱입니다. 기존 앱을 삭제할 필요가 없고 기존 앱의 데이터는 그대로 남습니다. 새 앱의 데이터는 독립적이므로 기존 여행이 자동으로 복사되지는 않습니다. 테스트 빌드 서명은 별도로 관리되지 않으므로 후속 테스트 앱을 덮어 설치하지 못할 수 있습니다.
+
+Windows에서 별도 테스트 APK를 빌드하려면:
+
+```powershell
+$env:ORG_GRADLE_PROJECT_sideBySide = 'true'
+flutter build apk --release --no-shrink --split-per-abi --target-platform android-arm64,android-x64
+Remove-Item Env:ORG_GRADLE_PROJECT_sideBySide
+```
