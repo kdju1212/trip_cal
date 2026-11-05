@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'controller.dart';
 import 'storage.dart';
-import 'services/ads.dart';
 import 'screens/home.dart';
 import 'screens/trip_detail.dart';
 
@@ -54,7 +53,6 @@ class _TripAppState extends State<TripApp> with WidgetsBindingObserver {
       if (id != null && mounted) {
         openTrip(id);
       }
-      unawaited(AdsService.initialize());
     });
   }
 

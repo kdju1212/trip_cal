@@ -29,7 +29,6 @@ flutter run
 - 검증된 판매처 홈페이지 링크 (일부 항목만), 제휴 없음
 - Android D-day ongoing notification, 권한 요청·날짜 갱신·자동 여행 선택·탭 이동·재부팅 복원
 - Material 3 한국어 UI, 라이트/다크/기기 설정, 작은 화면 스크롤
-- AdMob 테스트 배너와 UMP 동의 흐름. 동의 확인 불가/광고 실패 시 배너 없이 작동
 - SQLite v2 스키마, v1 마이그레이션, 외래 키 cascade 및 트랜잭션
 
 ## 검증 및 APK
@@ -53,13 +52,13 @@ GitHub Actions의 **Flutter checks and Android APK**가 위 정적 분석·테�
 
 ## 파일 구성
 
-`lib/domain.dart`: 국가·통화·정밀 계산 / `storage.dart`: SQLite 및 마이그레이션 / `controller.dart`: 상태·설정 갱신 / `services/`: 환율·알림·광고 / `screens/`: 8개 화면 / `widgets/`: 차트·배너·공통 입력 / `assets/tips/`: 국가별 JSON / `android/`: 네이티브 알림·Gradle / `ios/`: Xcode 프로젝트 / `test/`: 도메인·DB·API·위젯·알림 채널 테스트.
+`lib/domain.dart`: 국가·통화·정밀 계산 / `storage.dart`: SQLite 및 마이그레이션 / `controller.dart`: 상태·설정 갱신 / `services/`: 환율·알림 / `screens/`: 8개 화면 / `widgets/`: 차트·공통 입력 / `assets/tips/`: 국가별 JSON / `android/`: 네이티브 알림·Gradle / `ios/`: Xcode 프로젝트 / `test/`: 도메인·DB·API·위젯·알림 채널 테스트.
 
-세부 검증 상태와 제한은 [docs/VERIFICATION.md](docs/VERIFICATION.md), 서명 AAB·광고·스토어 준비는 [docs/RELEASE.md](docs/RELEASE.md), 개인정보 초안은 [docs/PRIVACY.md](docs/PRIVACY.md)를 확인하세요.
+세부 검증 상태와 제한은 [docs/VERIFICATION.md](docs/VERIFICATION.md), 서명 AAB·스토어 준비는 [docs/RELEASE.md](docs/RELEASE.md), 개인정보 초안은 [docs/PRIVACY.md](docs/PRIVACY.md)를 확인하세요.
 
 ## 주요 패키지
 
-`sqflite` 2.4.5, `decimal` 3.2.6, `fl_chart` 1.3.0, `http` 1.6.0, `url_launcher` 6.3.3, `google_mobile_ads` 9.2.0, `path` 1.9.1, Flutter localization/intl. 상태는 Flutter ChangeNotifier로 관리하고 Android 알림은 Kotlin MethodChannel로 구현했습니다. 테스트는 `flutter_test`, `sqflite_common_ffi` 2.4.5를 사용합니다. 실제 확정 버전은 `pubspec.lock`에 저장했습니다.
+`sqflite` 2.4.5, `decimal` 3.2.6, `fl_chart` 1.3.0, `http` 1.6.0, `url_launcher` 6.3.3, `path` 1.9.1, Flutter localization/intl. 상태는 Flutter ChangeNotifier로 관리하고 Android 알림은 Kotlin MethodChannel로 구현했습니다. 테스트는 `flutter_test`, `sqflite_common_ffi` 2.4.5를 사용합니다. 실제 확정 버전은 `pubspec.lock`에 저장했습니다.
 
 릴리스 APK의 코드 축소는 Android WorkManager 초기화에 필요한 생성자가 제거되는 문제를 피하기 위해 비활성화되어 있습니다. APK 또는 AAB를 만들 때 `--no-shrink`를 유지하세요.
 

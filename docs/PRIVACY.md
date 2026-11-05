@@ -6,10 +6,8 @@
 
 Frankfurter로 요청할 때 통화 쌍과 네트워크 정보가 해당 서비스에 전달됩니다. 여행 이름이나 전체 경비를 전송하지 않습니다. 참고 환율은 수수료와 실제 결제 시세를 보장하지 않습니다.
 
-Google Mobile Ads SDK는 광고 제공과 부정 사용 방지 등을 위해 광고 식별자, 기기/네트워크 정보, 광고 상호작용 등을 처리할 수 있습니다. 실제 수집·공유·보유 항목은 운영 설정과 SDK 버전에 맞춰 공개 정책 및 Google Play Data safety에 기재해야 합니다. UMP로 제공되는 개인정보 동의/선택 흐름을 사용합니다. 광고 실패/동의 정보 확인 불가 시 배너를 생략합니다.
-
 외부 판매처는 앱과 별도 사업자이며, 링크를 열면 각 사이트의 정책이 적용됩니다. 현재 링크에는 제휴 파라미터나 제휴 계약이 없습니다. 앱 내부 결제는 제공하지 않습니다.
 
 문의, 권리 행사, 변경 공지, 아동 대상 여부 및 지역별 추가 요건은 운영자 결정과 정책 검토 후 확정합니다.
 
-공식 참고: https://policies.google.com/privacy , https://developers.google.com/admob/flutter/privacy , https://frankfurter.dev/
+공식 참고: https://frankfurter.dev/

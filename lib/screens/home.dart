@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../controller.dart';
 import '../domain.dart';
 import '../widgets/common.dart';
-import '../widgets/ad_banner.dart';
 import 'trip_form.dart';
 import 'trip_detail.dart';
 import 'settings.dart';
@@ -76,7 +75,6 @@ class _HomeState extends State<Home> {
       icon: const Icon(Icons.add),
       label: const Text('새 여행'),
     ),
-    bottomNavigationBar: const AdBanner(),
     body: FutureBuilder<List<DbRow>>(
       future: data,
       builder: (context, snapshot) {

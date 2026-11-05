@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controller.dart';
 import '../domain.dart';
-import '../services/ads.dart';
 import '../widgets/common.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -183,19 +182,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     ListTile(
-                      title: const Text('광고 개인정보 설정'),
-                      trailing: const Icon(Icons.privacy_tip_outlined),
-                      onTap: () async {
-                        final shown = await AdsService.privacyOptions();
-                        if (context.mounted && !shown) {
-                          message(
-                            context,
-                            '현재 표시할 광고 동의 양식이 없어요. 광고 설정은 동의 상태에 따릅니다.',
-                          );
-                        }
-                      },
-                    ),
-                    ListTile(
                       title: const Text('앱 정보'),
                       subtitle: const Text('여행 준비 도우미 1.0.0 · 예상 경비 계획'),
                       onTap: () => showAboutDialog(
@@ -228,12 +214,7 @@ class PrivacyScreen extends StatelessWidget {
         Text('개발용 개인정보 안내', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 16),
         const Text(
-          '여행·예산·경비·준비물은 기기 내부 DB에 저장하며 개발자의 서버로 전송하지 않습니다. 회원가입과 로그인이 없습니다. 앱을 삭제하면 로컬 데이터가 삭제되며 자동 클라우드 백업은 사용하지 않습니다.\n\n환율을 조회하면 통화 코드와 네트워크 요청 정보(IP 주소 등)가 Frankfurter에 전달됩니다. 여행 이름과 경비 내역은 전송하지 않습니다.\n\n배너 광고는 Google Mobile Ads SDK를 사용합니다. 동의 상태와 지역에 따라 광고 식별자, 기기 정보, IP 주소, 광고 상호작용 등이 Google에 의해 처리될 수 있습니다. 실제 처리 항목은 SDK와 동의 설정에 따라 달라집니다. 광고 개인정보 설정에서 제공되는 선택지를 확인하세요.\n\n외부 링크는 기기의 브라우저에서 열리며 해당 사이트의 개인정보처리방침이 적용됩니다.\n\n현재는 테스트 광고를 사용하는 개발 버전입니다. 정식 출시 전 운영자명, 연락처, 처리 목적·보유기간·이용자 권리와 공개 정책 URL을 확정하고 Google Play 신고 내용과 일치시켜야 합니다.',
-        ),
-        TextButton(
-          onPressed: () =>
-              openExternal(context, 'https://policies.google.com/privacy'),
-          child: const Text('Google 개인정보처리방침'),
+          '여행·예산·경비·준비물은 기기 내부 DB에 저장하며 개발자의 서버로 전송하지 않습니다. 회원가입과 로그인이 없습니다. 앱을 삭제하면 로컬 데이터가 삭제되며 자동 클라우드 백업은 사용하지 않습니다.\n\n환율을 조회하면 통화 코드와 네트워크 요청 정보(IP 주소 등)가 Frankfurter에 전달됩니다. 여행 이름과 경비 내역은 전송하지 않습니다.\n\n외부 링크는 기기의 브라우저에서 열리며 해당 사이트의 개인정보처리방침이 적용됩니다.\n\n정식 출시 전 운영자명, 연락처, 처리 목적·보유기간·이용자 권리와 공개 정책 URL을 확정하고 Google Play 신고 내용과 일치시켜야 합니다.',
         ),
         TextButton(
           onPressed: () => openExternal(context, 'https://frankfurter.dev/'),

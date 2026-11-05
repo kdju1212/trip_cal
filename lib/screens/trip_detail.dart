@@ -4,7 +4,6 @@ import '../domain.dart';
 import '../widgets/common.dart';
 import '../services/rates.dart';
 import '../widgets/budget_chart.dart';
-import '../widgets/ad_banner.dart';
 import 'expense_form.dart';
 import 'expense_batch_form.dart';
 import 'trip_form.dart';
@@ -207,7 +206,6 @@ class _TripDetailState extends State<TripDetail> {
             ),
           ],
         ),
-        bottomNavigationBar: const AdBanner(),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => Navigator.push(
             context,
