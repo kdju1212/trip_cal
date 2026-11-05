@@ -144,9 +144,31 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final id = (await tester.runAsync(() => store.createTrip({'name': '테스트', 'country': 'KR', 'budget': '1000000'})))!;
+    final id = (await tester.runAsync(
+      () => store.createTrip({
+        'name': '테스트',
+        'country': 'KR',
+        'budget': '1000000',
+      }),
+    ))!;
     final trip = (await tester.runAsync(store.trips))!.single;
-    await tester.pumpWidget(wrap(Builder(builder: (context) => Scaffold(body: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ExpenseBatchForm(app, trip))), child: const Text('시작'))))));
+    await tester.pumpWidget(
+      wrap(
+        Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => ExpenseBatchForm(app, trip),
+                ),
+              ),
+              child: const Text('시작'),
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.tap(find.text('시작'));
     await tester.pumpAndSettle();
     expect(find.text('경비 이름'), findsNothing);
@@ -158,12 +180,30 @@ void main() {
     await tester.enterText(find.byType(TextFormField).last, '200000');
     await tester.ensureVisible(find.text('2개 경비 저장'));
     await tester.tap(find.text('2개 경비 저장'));
-    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
     await tester.pumpAndSettle();
     final rows = (await tester.runAsync(() => store.expenses(id)))!;
     expect(rows, hasLength(2));
     expect(rows.map((e) => e['category']), everyElement('항공권'));
     expect(totalWon(rows), BigInt.from(700000));
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('작은 화면에서도 경비 항목과 금액을 한 줄에 나란히 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final id = (await tester.runAsync(() => store.createTrip({'name': '국내 여행', 'country': 'KR', 'budget': '1000000'})))!;
+    final trip = (await tester.runAsync(store.trips))!.firstWhere((r) => r['id'] == id);
+    await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip), scale: 1.3));
+    await tester.pumpAndSettle();
+    final category = tester.getRect(find.byType(DropdownButtonFormField<String>).first);
+    final amount = tester.getRect(find.byType(TextFormField).first);
+    expect(amount.left, greaterThan(category.left));
+    expect(amount.top, category.top);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
 

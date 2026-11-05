@@ -204,11 +204,19 @@ void main() {
   });
   test('여러 경비를 한 번에 저장하고 오류가 있으면 모두 취소한다', () async {
     final id = await trip();
-    await store.saveExpenses(id, [expense('항공권', '500000', 'KRW', '1'), expense('숙박비', '30000', 'JPY', '9.5')]);
+    await store.saveExpenses(id, [
+      expense('항공권', '500000', 'KRW', '1'),
+      expense('숙박비', '30000', 'JPY', '9.5'),
+    ]);
     expect((await store.expenses(id)).length, 2);
     expect(totalWon(await store.expenses(id)), BigInt.from(785000));
-    await expectLater(store.saveExpenses(id, [expense('식비', '10000', 'KRW', '1'), expense('숙박비', '-1', 'JPY', '9.5')]), throwsFormatException);
+    await expectLater(
+      store.saveExpenses(id, [
+        expense('식비', '10000', 'KRW', '1'),
+        expense('숙박비', '-1', 'JPY', '9.5'),
+      ]),
+      throwsFormatException,
+    );
     expect((await store.expenses(id)).length, 2);
   });
-
 }
