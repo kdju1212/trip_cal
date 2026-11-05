@@ -110,9 +110,18 @@ void main() {
   test('국내 준비물에는 해외 전용 준비물이 없다', () async {
     final id = await trip(country: 'KR');
     final names = (await store.checklist(id)).map((e) => e['name']);
-    expect(names, containsAll(['숙박 예약 확인', '충전기', '개인 위생용품']));
+    expect(names, containsAll(['신분증', '숙박 예약 확인', '충전기']));
+    expect(names, isNot(contains('개인 위생용품')));
     expect(names, isNot(contains('여권')));
     expect(names, isNot(contains('멀티어댑터')));
+  });
+  test('해외 기본 준비물은 변압기를 필요 시 챙기도록 안내한다', () async {
+    final id = await trip(country: 'JP');
+    final names = (await store.checklist(id)).map((e) => e['name']).toList();
+    expect(names, containsAll(['여권', '충전기', '변압기 (필요 시)']));
+    for (final removed in ['휴대폰', '멀티어댑터', '현금', '결제 카드', '해외 결제 카드', '환전', '개인 위생용품']) {
+      expect(names, isNot(contains(removed)));
+    }
   });
   test('환율 재계산은 원본 금액을 보존하고 반복해도 중복 환산하지 않는다', () async {
     final id = await trip();
