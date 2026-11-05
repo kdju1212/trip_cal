@@ -8,6 +8,7 @@ import 'package:trip_cal/domain.dart';
 import 'package:trip_cal/screens/trip_form.dart';
 import 'package:trip_cal/screens/expense_batch_form.dart';
 import 'package:trip_cal/screens/trip_detail.dart';
+import 'package:trip_cal/screens/checklist.dart';
 import 'package:trip_cal/storage.dart';
 import 'package:trip_cal/services/rates.dart';
 import 'package:trip_cal/widgets/budget_chart.dart';
@@ -42,6 +43,19 @@ void main() {
         ),
         home: child,
       );
+  testWidgets('해외 준비물에서 통신 항목을 맨 위에 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(900, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final id = (await tester.runAsync(() => store.createTrip({'name': '일본', 'country': 'JP', 'budget': '100000'})))!;
+    await tester.pumpWidget(wrap(ChecklistScreen(app, id)));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.text('eSIM · 유심 · 로밍 중 필요한 방식 확인')).dy,
+        lessThan(tester.getTopLeft(find.text('신분증')).dy));
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('새 여행은 출발일 입력 없이 저장할 수 있다', (tester) async {
     await tester.pumpWidget(
       wrap(

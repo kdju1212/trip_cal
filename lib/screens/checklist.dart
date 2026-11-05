@@ -130,7 +130,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         }
         final items = snapshot.data!;
         final count = items.where((e) => e['checked'] == 1).length;
-        final groups = items.map((e) => e['category']! as String).toSet();
+        final groups = items.map((e) => e['category']! as String).toSet().toList();
+        const connectivityGroup = '통신 (필요한 방식만 선택)';
+        if (groups.remove(connectivityGroup)) {
+          groups.insert(0, connectivityGroup);
+        }
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 110),
           children: [
