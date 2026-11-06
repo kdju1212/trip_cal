@@ -191,7 +191,6 @@ class _TripDetailState extends State<TripDetail> {
       final budget = BigInt.parse(trip['budget']! as String),
           total = totalWon(expenses);
       final remaining = budget - total;
-      final ratio = budgetRatio(total, budget);
       return Scaffold(
         appBar: AppBar(
           title: Text(trip['name']! as String),
@@ -244,12 +243,11 @@ class _TripDetailState extends State<TripDetail> {
               ),
             const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 14),
               decoration: BoxDecoration(
-                color: remaining.isNegative
-                    ? Theme.of(context).colorScheme.errorContainer
-                    : Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
+                border: Border.symmetric(
+                  horizontal: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,20 +258,15 @@ class _TripDetailState extends State<TripDetail> {
                     formatWon(
                       remaining.isNegative ? remaining.abs() : remaining,
                     ),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.w800,
+                      color: remaining.isNegative ? Theme.of(context).colorScheme.error : null,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text('총 예산 ${formatWon(budget)}'),
                   Text('예상 경비 ${formatWon(total)}'),
                   const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: ratio.clamp(0, 1).toDouble(),
-                    minHeight: 8,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  const SizedBox(height: 4),
                   Text(
                     budget == BigInt.zero
                         ? '총 예산이 0원입니다. 예산을 설정해 주세요.'
@@ -283,13 +276,11 @@ class _TripDetailState extends State<TripDetail> {
               ),
             ),
             const SizedBox(height: 4),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            Row(
               children: [
-                ActionChip(
+                Expanded(child: ActionChip(
                   avatar: const Icon(Icons.checklist),
-                  label: const Text('체크리스트'),
+                  label: const Center(child: Text('체크리스트')),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute<void>(
@@ -297,17 +288,18 @@ class _TripDetailState extends State<TripDetail> {
                           ChecklistScreen(widget.app, widget.tripId, country: country, departure: trip['departure'] as String?, endDate: trip['end_date'] as String?),
                     ),
                   ),
-                ),
-                ActionChip(
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: ActionChip(
                   avatar: const Icon(Icons.lightbulb_outline),
-                  label: const Text('여행 꿀팁'),
+                  label: const Center(child: Text('여행 꿀팁')),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute<void>(
                       builder: (_) => TipsScreen(country),
                     ),
                   ),
-                ),
+                )),
               ],
             ),
             const SizedBox(height: 4),
