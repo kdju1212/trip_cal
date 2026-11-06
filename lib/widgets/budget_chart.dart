@@ -36,17 +36,10 @@ class BudgetChart extends StatelessWidget {
         (n * BigInt.from(1000000) ~/ d).toDouble() / 1000000;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '예산 한눈에 보기',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
             if (denominator == BigInt.zero)
               const Padding(
                 padding: EdgeInsets.all(16),
@@ -54,7 +47,7 @@ class BudgetChart extends StatelessWidget {
               )
             else ...[
               SizedBox(
-                height: 190,
+                height: 150,
                 child: Semantics(
                   label: '카테고리별 경비 및 남은 예산 도넛 차트',
                   child: PieChart(

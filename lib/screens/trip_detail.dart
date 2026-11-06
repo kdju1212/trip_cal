@@ -217,7 +217,7 @@ class _TripDetailState extends State<TripDetail> {
           label: const Text('경비 추가'),
         ),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 110),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
           children: [
             Wrap(
               spacing: 8,
@@ -237,14 +237,14 @@ class _TripDetailState extends State<TripDetail> {
             ),
             if (trip['departure'] != null)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 2),
                 child: Text(trip['end_date'] == null
                     ? '출발일 ${trip['departure']}'
                     : '여행 기간 ${trip['departure']} ~ ${trip['end_date']}'),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: remaining.isNegative
                     ? Theme.of(context).colorScheme.errorContainer
@@ -255,7 +255,7 @@ class _TripDetailState extends State<TripDetail> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(remaining.isNegative ? '예산을 초과했어요' : '남은 여행 예산'),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 4),
                   Text(
                     formatWon(
                       remaining.isNegative ? remaining.abs() : remaining,
@@ -264,16 +264,16 @@ class _TripDetailState extends State<TripDetail> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 6),
                   Text('총 예산 ${formatWon(budget)}'),
                   Text('예상 경비 ${formatWon(total)}'),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   LinearProgressIndicator(
                     value: ratio.clamp(0, 1).toDouble(),
                     minHeight: 8,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     budget == BigInt.zero
                         ? '총 예산이 0원입니다. 예산을 설정해 주세요.'
@@ -282,7 +282,7 @@ class _TripDetailState extends State<TripDetail> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -310,7 +310,7 @@ class _TripDetailState extends State<TripDetail> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             BudgetChart(expenses, budget),
             SectionTitle(
               '예상 경비',

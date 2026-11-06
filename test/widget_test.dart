@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,6 +171,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('일본 여행'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('여행 상세에서 남은 예산과 도넛이 한 화면에 보인다', (tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final id = (await tester.runAsync(() => store.createTrip({
+      'name': '여행', 'country': 'JP', 'budget': '100000',
+      'departure': '2027-01-03', 'end_date': '2027-01-05',
+    })))!;
+    await tester.pumpWidget(wrap(TripDetail(app, id)));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    expect(find.text('예산 한눈에 보기'), findsNothing);
+    expect(find.text('남은 여행 예산'), findsOneWidget);
+    expect(find.byType(PieChart), findsOneWidget);
+    expect(tester.getBottomRight(find.byType(PieChart)).dy, lessThanOrEqualTo(780));
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets('이름 입력 없이 같은 항목을 여러 줄에 추가해 한 번에 저장한다', (tester) async {
