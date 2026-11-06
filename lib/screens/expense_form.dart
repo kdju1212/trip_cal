@@ -61,7 +61,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
           loading = false;
         });
         if (result.cached) {
-          message(context, '조회에 실패해 저장된 환율을 불러왔어요. 기준 날짜를 확인하세요.');
+          message(context, '최신 환율을 가져오지 못해 저장된 환율을 사용합니다.');
         }
       }
     } on FormatException catch (e) {
@@ -105,7 +105,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('1 $currency = ? 원'),
+        title: const Text('환율 직접 입력'),
         content: TextField(
           controller: c,
           autofocus: true,
@@ -113,7 +113,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
           inputFormatters: const [NumberInputFormatter(decimals: 12)],
           decoration: const InputDecoration(
             labelText: '직접 입력 환율',
-            helperText: '0보다 큰 값을 입력하세요.',
+            helperText: '외화 1단위당 원화 금액을 입력하세요.',
           ),
         ),
         actions: [
@@ -310,15 +310,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            quote == null
-                                ? '환율 조회 또는 직접 입력이 필요해요.'
-                                : '1 $currency = ${quote!.rate} 원',
-                          ),
-                          if (quote != null)
-                            Text(
-                              '${quote!.date} · ${quote!.source}${quote!.cached ? ' · 저장된 환율' : ''}',
-                            ),
+                          if (quote == null)
+                            const Text('환율 조회 또는 직접 입력이 필요해요.'),
                           Wrap(
                             spacing: 8,
                             children: [

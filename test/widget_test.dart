@@ -325,6 +325,9 @@ void main() {
     await tester.enterText(find.byType(TextFormField).first, '30000');
     await tester.pump();
     expect(find.text('원화 환산 285,000원'), findsOneWidget);
+    expect(find.textContaining('Frankfurter'), findsNothing);
+    expect(find.textContaining('1 JPY'), findsNothing);
+    expect(find.textContaining('2026-11-04'), findsNothing);
     await tester.tap(find.text('항목 추가'));
     await tester.pumpAndSettle();
     expect(find.text('KRW ₩'), findsOneWidget);

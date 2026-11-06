@@ -148,7 +148,7 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
         row.loading = false;
       });
       if (quote.cached) {
-        message(context, '저장된 환율을 불러왔어요. 기준 날짜를 확인하세요.');
+        message(context, '최신 환율을 가져오지 못해 저장된 환율을 사용합니다.');
       }
     } catch (_) {
       if (!mounted || !entries.contains(row) || row.generation != request) {
@@ -164,13 +164,13 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('1 ${row.currency} = ? 원'),
+        title: const Text('환율 직접 입력'),
         content: TextField(
           controller: controller,
           autofocus: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: const [NumberInputFormatter(decimals: 12)],
-          decoration: const InputDecoration(labelText: '직접 입력 환율'),
+          decoration: const InputDecoration(labelText: '외화 1단위당 원화'),
         ),
         actions: [
           TextButton(
@@ -451,12 +451,8 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
                 ],
               ),
             if (row.currency != 'KRW') ...[
-              Text(
-                row.quote == null
-                    ? '환율 조회 또는 직접 입력이 필요해요.'
-                    : '1 ${row.currency} = ${row.quote!.rate}원 · ${row.quote!.date} · ${row.quote!.source}${row.quote!.cached ? ' (저장된 환율)' : ''}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              if (row.quote == null)
+                Text('환율 조회 또는 직접 입력이 필요해요.', style: Theme.of(context).textTheme.bodySmall),
               Wrap(
                 spacing: 8,
                 children: [

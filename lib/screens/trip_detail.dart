@@ -126,19 +126,14 @@ class _TripDetailState extends State<TripDetail> {
         });
       }
       final old = totalWon(foreign), next = totalWon(preview);
-      final info = quotes.values
-          .map(
-            (q) =>
-                '${q.currency}: ${q.rate}원 · ${q.date} · ${q.source}${q.cached ? ' (저장된 환율)' : ''}',
-          )
-          .join('\n');
+      final usesCached = quotes.values.any((q) => q.cached);
       if (!mounted) {
         return;
       }
       if (!await confirm(
         context,
         '환율 재계산 미리보기',
-        '외화 경비 합계\n${formatWon(old)} → ${formatWon(next)}\n변경 차액 ${formatWon(next - old)}\n\n$info\n\n원래 외화 입력 금액을 기준으로 다시 계산합니다.',
+        '외화 경비 합계\n${formatWon(old)} → ${formatWon(next)}\n변경 차액 ${formatWon(next - old)}${usesCached ? '\n일부 통화는 저장된 환율을 사용합니다.' : ''}\n\n원래 외화 입력 금액을 기준으로 다시 계산합니다.',
         action: '재계산 적용',
       )) {
         return;
@@ -348,11 +343,6 @@ class _TripDetailState extends State<TripDetail> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (e['currency'] != 'KRW')
-                        Text(
-                          '1 ${e['currency']} = ${e['rate']}원\n${e['rate_date']} · ${e['rate_source']}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
                     ],
                   ),
                   onTap: () => Navigator.push(
