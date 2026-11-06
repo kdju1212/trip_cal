@@ -249,13 +249,15 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
       ? const Center(child: CircularProgressIndicator())
       : loadFailed
       ? Center(child: TextButton(onPressed: loadEntries, child: const Text('경비를 불러오지 못했어요. 다시 시도')))
-      : Center(
+      : SafeArea(
+      top: false,
+      child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
         child: Form(
           key: form,
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
             children: [
               const Text('저장된 경비가 위에 표시됩니다. 항목을 추가하거나 수정한 뒤 저장해 주세요.'),
               for (final row in entries) entryCard(row),
@@ -281,6 +283,7 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
           ),
         ),
       ),
+    ),
     ),
   );
 

@@ -191,6 +191,31 @@ void main() {
     expect(tester.getBottomRight(find.byType(PieChart)).dy, lessThanOrEqualTo(780));
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('경비 저장 버튼은 내비게이션 바 위에 여유를 두고 표시된다', (tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final id = (await tester.runAsync(() => store.createTrip({'name': '여행', 'country': 'KR', 'budget': '100000'})))!;
+    await tester.runAsync(() async {
+      for (var i = 0; i < 3; i++) {
+        await store.saveExpense(id, {'name': '항공권', 'category': '항공권', 'amount': '1000', 'currency': 'KRW', 'rate': '1', 'rate_source': 'KRW'});
+      }
+    });
+    final trip = (await tester.runAsync(store.trips))!.single;
+    await tester.pumpWidget(wrap(MediaQuery(
+      data: const MediaQueryData(size: Size(360, 780), padding: EdgeInsets.only(bottom: 32), viewPadding: EdgeInsets.only(bottom: 32)),
+      child: ExpenseBatchForm(app, trip),
+    )));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -1800));
+    await tester.pumpAndSettle();
+    final button = find.ancestor(of: find.text('3개 경비 저장'), matching: find.byType(FilledButton));
+    expect(button, findsOneWidget);
+    expect(tester.getBottomRight(button).dy, lessThanOrEqualTo(700));
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('이름 입력 없이 같은 항목을 여러 줄에 추가해 한 번에 저장한다', (tester) async {
     tester.view.physicalSize = const Size(900, 1600);
     tester.view.devicePixelRatio = 1;
