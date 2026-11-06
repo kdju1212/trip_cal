@@ -234,7 +234,8 @@ class _TripDetailState extends State<TripDetail> {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(trip['end_date'] == null
                     ? '출발일 ${trip['departure']}'
-                    : '여행 기간 ${trip['departure']} ~ ${trip['end_date']}'),
+                    : '여행 기간 ${trip['departure']} ~ ${trip['end_date']}',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ),
             const SizedBox(height: 8),
             Container(
@@ -247,7 +248,8 @@ class _TripDetailState extends State<TripDetail> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(remaining.isNegative ? '예산을 초과했어요' : '남은 여행 예산'),
+                  Text(remaining.isNegative ? '예산을 초과했어요' : '남은 여행 예산',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   Text(
                     formatWon(
@@ -259,13 +261,14 @@ class _TripDetailState extends State<TripDetail> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text('총 예산 ${formatWon(budget)}'),
-                  Text('예상 경비 ${formatWon(total)}'),
+                  Text('총 예산 ${formatWon(budget)}', style: Theme.of(context).textTheme.bodyMedium),
+                  Text('예상 경비 ${formatWon(total)}', style: Theme.of(context).textTheme.bodyMedium),
                   const SizedBox(height: 8),
                   Text(
                     budget == BigInt.zero
                         ? '총 예산이 0원입니다. 예산을 설정해 주세요.'
                         : '예산 사용률 ${budgetUsagePercent(total, budget)}%',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),

@@ -259,7 +259,8 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
             children: [
-              const Text('저장된 경비가 위에 표시됩니다. 항목을 추가하거나 수정한 뒤 저장해 주세요.'),
+              Text('저장된 경비가 위에 표시됩니다. 항목을 추가하거나 수정한 뒤 저장해 주세요.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               for (final row in entries) entryCard(row),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -304,14 +305,14 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
       child: Card(child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('남은 예산', style: Theme.of(context).textTheme.titleSmall),
+          Text('남은 예산', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
           const SizedBox(height: 6),
           Text(formatWon(remaining), style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: remaining.isNegative ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary,
           )),
           if (remaining.isNegative) Text('예산 초과 ${formatWon(remaining.abs())}'),
-          if (incomplete) const Text('금액이나 환율을 입력하지 않은 항목은 제외했어요.'),
+          if (incomplete) Text('금액이나 환율을 입력하지 않은 항목은 제외했어요.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ]),
       )),
     );
