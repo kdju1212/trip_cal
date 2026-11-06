@@ -62,6 +62,9 @@ void main() {
     expect(find.text('eSIM 사러가기'), findsOneWidget);
     expect(find.text('여행 기간 2027-01-03 ~ 2027-01-06 · 총 4일'), findsOneWidget);
     expect(find.text('일본 eSIM 4일'), findsOneWidget);
+    expect(find.text('일본 eSIM 3일'), findsNothing);
+    expect(find.text('일본 eSIM 5일'), findsNothing);
+    expect(find.text('일본 eSIM 7일'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
   testWidgets('새 여행은 출발일 입력 없이 저장할 수 있다', (tester) async {
@@ -138,6 +141,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('300,000원'), findsOneWidget);
+    expect(find.byType(BarChart), findsNothing);
+    expect(find.text('카테고리별 비교'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(
       wrap(

@@ -17,9 +17,8 @@ class SimShoppingScreen extends StatelessWidget {
     final days = tripCalendarDays(departure, endDate);
     final options = <(String, String, IconData)>[
       if (days != null) ('$days일', '여행 기간에 맞는 상품 찾아보기', Icons.event_available_outlined),
-      for (final n in [3, 5, 7])
-        if (n != days) ('$n일', '$n일 이용 상품 찾아보기', Icons.date_range_outlined),
-      (days == null ? '데이터 무제한' : '$days일 데이터 무제한', '데이터 제공량과 속도 조건 확인', Icons.all_inclusive),
+      if (days == null) for (final n in [3, 5, 7]) ('$n일', '$n일 이용 상품 찾아보기', Icons.date_range_outlined),
+      if (days == null) ('데이터 무제한', '데이터 제공량과 속도 조건 확인', Icons.all_inclusive),
     ];
     return Scaffold(
       appBar: AppBar(title: Text('$type 사러가기')),

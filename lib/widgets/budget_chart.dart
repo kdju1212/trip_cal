@@ -30,7 +30,6 @@ class BudgetChart extends StatelessWidget {
       if (remaining > BigInt.zero) MapEntry('남은 예산', remaining),
     ];
     final denominator = entries.fold(BigInt.zero, (s, e) => s + e.value);
-    final max = totals.fold(BigInt.one, (s, e) => e.value > s ? e.value : s);
     // Ratios are bounded before conversion to doubles; never chart negative values.
     double ratio(BigInt n, BigInt d) =>
         (n * BigInt.from(1000000) ~/ d).toDouble() / 1000000;
@@ -100,65 +99,6 @@ class BudgetChart extends StatelessWidget {
                     ],
                   ),
                 ),
-            ],
-            if (totals.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text('카테고리별 비교', style: Theme.of(context).textTheme.titleSmall),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 150,
-                child: Semantics(
-                  label: '카테고리별 예상 경비 막대 차트. 아래 숫자는 범례 순서입니다.',
-                  child: BarChart(
-                    BarChartData(
-                      maxY: 1.15,
-                      gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
-                      titlesData: FlTitlesData(
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (v, meta) =>
-                                Text('${v.toInt() + 1}'),
-                          ),
-                        ),
-                      ),
-                      barGroups: [
-                        for (var i = 0; i < totals.length; i++)
-                          BarChartGroupData(
-                            x: i,
-                            barRods: [
-                              BarChartRodData(
-                                toY: ratio(totals[i].value, max),
-                                width: 16,
-                                color: chartColors[i % chartColors.length],
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                            ],
-                          ),
-                      ],
-                      barTouchData: BarTouchData(enabled: false),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                [
-                  for (var i = 0; i < totals.length; i++)
-                    '${i + 1}. ${totals[i].key}',
-                ].join('   '),
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
             ],
           ],
         ),
