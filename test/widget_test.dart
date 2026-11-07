@@ -10,6 +10,7 @@ import 'package:trip_cal/screens/trip_form.dart';
 import 'package:trip_cal/screens/expense_batch_form.dart';
 import 'package:trip_cal/screens/trip_detail.dart';
 import 'package:trip_cal/screens/checklist.dart';
+import 'package:trip_cal/screens/home.dart';
 import 'package:trip_cal/storage.dart';
 import 'package:trip_cal/services/rates.dart';
 import 'package:trip_cal/widgets/budget_chart.dart';
@@ -44,6 +45,22 @@ void main() {
         ),
         home: child,
       );
+  testWidgets('홈에 설정에서 선택한 여행의 D-day를 보여준다', (tester) async {
+    await tester.runAsync(() async {
+      final id = await store.createTrip({'name': '선택한 여행', 'country': 'JP', 'budget': '100000', 'departure': '2099-01-03'});
+      await store.createTrip({'name': '가까운 여행', 'country': 'KR', 'budget': '0', 'departure': '2098-01-01'});
+      await store.setSetting('notificationTrip', id);
+      await store.setSetting('notificationRemaining', false);
+    });
+    await tester.pumpWidget(wrap(Home(app)));
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
+    await tester.pumpAndSettle();
+    expect(find.text('🇯🇵 선택한 여행'), findsOneWidget);
+    expect(find.text(dDay(DateTime(2099, 1, 3), DateTime.now())), findsWidgets);
+    expect(find.textContaining('체크리스트', findRichText: true), findsNothing);
+    expect(find.textContaining('설렘은 더하고'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets('해외 준비물에서 통신 항목을 맨 위에 표시한다', (tester) async {
     tester.view.physicalSize = const Size(900, 1600);
     tester.view.devicePixelRatio = 1;

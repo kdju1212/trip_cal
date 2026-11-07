@@ -150,6 +150,18 @@ double budgetRatio(BigInt spent, BigInt budget) {
 DateTime calendarDate(DateTime date) =>
     DateTime.utc(date.year, date.month, date.day);
 
+DbRow? selectedDdayTrip(List<DbRow> trips, int selectedId, DateTime now) {
+  final eligible = trips.where((trip) => notificationEligible(trip, now)).toList();
+  if (eligible.isEmpty) return null;
+  if (selectedId != 0) {
+    for (final trip in eligible) {
+      if (trip['id'] == selectedId) return trip;
+    }
+  }
+  eligible.sort((a, b) => (a['departure'] as String).compareTo(b['departure'] as String));
+  return eligible.first;
+}
+
 /// Calendar days including both departure and return, independent of DST.
 int? tripCalendarDays(String? start, String? end) {
   if (start == null || end == null) return null;

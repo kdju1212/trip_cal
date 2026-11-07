@@ -2,6 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trip_cal/domain.dart';
 
 void main() {
+  test('D-day는 선택한 여행 또는 가장 가까운 출발일을 표시한다', () {
+    final trips = <DbRow>[
+      {'id': 1, 'departure': '2026-11-12'},
+      {'id': 2, 'departure': '2026-11-09'},
+      {'id': 3, 'departure': '2026-11-06'},
+      {'id': 4, 'departure': null},
+    ];
+    final now = DateTime(2026, 11, 7);
+    expect(selectedDdayTrip(trips, 0, now)!['id'], 2);
+    expect(selectedDdayTrip(trips, 1, now)!['id'], 1);
+    expect(selectedDdayTrip(trips, 3, now)!['id'], 2);
+    expect(selectedDdayTrip([], 0, now), isNull);
+  });
   test('여행 일수는 시작일과 종료일을 포함한다', () {
     expect(tripCalendarDays('2027-01-03', '2027-01-05'), 3);
     expect(tripCalendarDays('2027-01-03', '2027-01-03'), 1);
