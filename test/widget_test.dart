@@ -298,7 +298,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
-  testWidgets('각 줄의 통화를 선택하고 취소하면 입력 금액이 유지된다', (tester) async {
+  testWidgets('각 줄의 통화를 바꾸어도 입력 금액이 유지된다', (tester) async {
     tester.view.physicalSize = const Size(900, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -315,6 +315,7 @@ void main() {
     final trip = {'id': 1, 'country': 'JP', 'budget': '1000000'};
     await tester.pumpWidget(wrap(ExpenseBatchForm(app, trip)));
     await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '30000');
     await tester.tap(find.text('KRW ₩'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('JPY ¥').last);
@@ -322,8 +323,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     });
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).first, '30000');
-    await tester.pump();
+    expect(find.text('30,000'), findsOneWidget);
     expect(find.text('원화 환산 285,000원'), findsOneWidget);
     expect(find.textContaining('Frankfurter'), findsNothing);
     expect(find.textContaining('1 JPY'), findsNothing);
@@ -335,8 +335,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('KRW ₩').last);
     await tester.pumpAndSettle();
-    expect(find.text('통화를 바꿀까요?'), findsOneWidget);
-    await tester.tap(find.text('취소'));
+    expect(find.text('통화를 바꿀까요?'), findsNothing);
+    expect(find.text('30,000'), findsOneWidget);
+    expect(find.text('원화 환산 285,000원'), findsNothing);
+    await tester.tap(find.text('KRW ₩').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('JPY ¥').last);
+    await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
     await tester.pumpAndSettle();
     expect(find.text('30,000'), findsOneWidget);
     expect(find.text('원화 환산 285,000원'), findsOneWidget);

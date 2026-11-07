@@ -76,22 +76,12 @@ class _ExpenseFormState extends State<ExpenseForm> {
     if (next == currency) {
       return;
     }
-    if (amount.text.isNotEmpty &&
-        !await confirm(
-          context,
-          '통화를 바꿀까요?',
-          '숫자가 다른 통화로 해석되지 않도록 입력 금액을 초기화합니다.',
-          action: '초기화하고 변경',
-        )) {
-      return;
-    }
     if (!mounted) {
       return;
     }
     generation++;
     setState(() {
       currency = next;
-      amount.clear();
       quote = null;
       loading = false;
     });

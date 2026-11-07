@@ -110,22 +110,12 @@ class _ExpenseBatchFormState extends State<ExpenseBatchForm> {
     if (row.currency == next) {
       return;
     }
-    if (row.amount.text.isNotEmpty &&
-        !await confirm(
-          context,
-          '통화를 바꿀까요?',
-          '입력한 금액이 다른 통화로 잘못 해석되지 않도록 금액을 초기화합니다.',
-          action: '초기화하고 변경',
-        )) {
-      return;
-    }
     if (!mounted || !entries.contains(row)) {
       return;
     }
     setState(() {
       row.generation++;
       row.currency = next;
-      row.amount.clear();
       row.quote = null;
       row.loading = false;
     });
