@@ -1,0 +1,18 @@
+version:
+  revision: "c197ca5"
+  channel: "stable"
+project_type: app
+migration:
+  platforms:
+    - platform: root
+      create_revision: c197ca5
+      base_revision: c197ca5
+    - platform: android
+      create_revision: c197ca5
+      base_revision: c197ca5
+    - platform: ios
+      create_revision: c197ca5
+      base_revision: c197ca5
+  unmanaged_files:
+    - 'lib/main.dart'
+    - 'ios/Runner.xcodeproj/project.pbxproj'
