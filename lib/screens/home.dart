@@ -14,7 +14,7 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  late Future<(List<DbRow>, int, bool)> data;
+  late Future<(List<DbRow>, int)> data;
   @override
   void initState() {
     super.initState();
@@ -29,22 +29,19 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<(List<DbRow>, int, bool)> load() async {
+  Future<(List<DbRow>, int)> load() async {
     final trips = await widget.app.store.trips();
     final selected = await widget.app.store.setting('notificationTrip', 0);
-    final showRemaining = await widget.app.store.setting('notificationRemaining', true);
     final result = <DbRow>[];
     for (final trip in trips) {
       final expenses = await widget.app.store.expenses(trip['id']! as int);
-      final items = showRemaining ? await widget.app.store.checklist(trip['id']! as int) : <DbRow>[];
       result.add({
         ...trip,
         'remaining':
             BigInt.parse(trip['budget']! as String) - totalWon(expenses),
-        'checklistRemaining': items.where((item) => item['checked'] != 1).length,
       });
     }
-    return (result, selected, showRemaining);
+    return (result, selected);
   }
 
   @override
@@ -79,7 +76,7 @@ class _HomeState extends State<Home> {
       icon: const Icon(Icons.add),
       label: const Text('새 여행'),
     ),
-    body: FutureBuilder<(List<DbRow>, int, bool)>(
+    body: FutureBuilder<(List<DbRow>, int)>(
       future: data,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -93,7 +90,7 @@ class _HomeState extends State<Home> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final (trips, selectedId, showRemaining) = snapshot.data!;
+        final (trips, selectedId) = snapshot.data!;
         final featured = selectedDdayTrip(trips, selectedId, DateTime.now());
         return RefreshIndicator(
           onRefresh: () async {
@@ -136,12 +133,6 @@ class _HomeState extends State<Home> {
                       featured == null ? '출발일을 입력하면 D-day가 표시돼요.' : dDay(DateTime.parse(featured['departure']! as String), DateTime.now()),
                       style: TextStyle(color: Colors.white, fontSize: featured == null ? 15 : 32, fontWeight: featured == null ? FontWeight.normal : FontWeight.bold),
                     ),
-                    if (featured != null) ...[
-                      const SizedBox(height: 6),
-                      Text('${featured['departure']} 출발${showRemaining ? ' · 체크리스트 ${featured['checklistRemaining']}개 남음' : ''}', style: const TextStyle(color: Colors.white)),
-                      TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TripDetail(widget.app, featured['id']! as int))),
-                        style: TextButton.styleFrom(foregroundColor: Colors.white), child: const Text('여행 보기 ›')),
-                    ],
                   ],
                 ),
               ),

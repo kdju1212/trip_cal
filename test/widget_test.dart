@@ -50,7 +50,7 @@ void main() {
       final id = await store.createTrip({'name': '선택한 여행', 'country': 'JP', 'budget': '100000', 'departure': '2099-01-03'});
       await store.createTrip({'name': '가까운 여행', 'country': 'KR', 'budget': '0', 'departure': '2098-01-01'});
       await store.setSetting('notificationTrip', id);
-      await store.setSetting('notificationRemaining', false);
+      await store.setSetting('notificationRemaining', true);
     });
     await tester.pumpWidget(wrap(Home(app)));
     await tester.runAsync(() async { await Future<void>.delayed(const Duration(milliseconds: 100)); });
@@ -58,6 +58,8 @@ void main() {
     expect(find.text('🇯🇵 선택한 여행'), findsOneWidget);
     expect(find.text(dDay(DateTime(2099, 1, 3), DateTime.now())), findsWidgets);
     expect(find.textContaining('체크리스트', findRichText: true), findsNothing);
+    expect(find.text('여행 보기 ›'), findsNothing);
+    expect(find.textContaining('2099-01-03 출발'), findsNothing);
     expect(find.textContaining('설렘은 더하고'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
