@@ -89,7 +89,7 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
                           Text('광고 · ${ad.merchant}', style: Theme.of(context).textTheme.labelMedium),
                           const SizedBox(height: 4),
                           Text(ad.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                          Text('${ad.duration}일${ad.description.isEmpty ? '' : ' · ${ad.description}'}'),
+                          Text('${ad.duration}일${ad.description.isEmpty ? '' : ' · ${ad.description}'}', maxLines: 1, overflow: TextOverflow.ellipsis),
                           if (ad.price != null) Text('등록 가격 ${formatWon(BigInt.from(ad.price!))}', style: const TextStyle(fontWeight: FontWeight.bold)),
                           Text('가격과 조건은 판매처에서 확인 ›', style: Theme.of(context).textTheme.bodySmall),
                         ])),

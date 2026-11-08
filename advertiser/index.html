@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>여행 준비 도우미 · 광고 등록</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <header><span class="eyebrow">여행 준비 도우미</span><h1>유심·eSIM 광고 등록</h1><p>상품을 입력하고 앱에 보일 모습을 미리 확인하세요.</p></header>
+    <section id="config-panel" class="panel" hidden>
+      <h2>서버 연결</h2><p>운영자가 프로젝트의 공개 정보를 설정합니다.</p>
+      <form id="config-form"><label>Supabase URL<input id="project-url" type="url" placeholder="https://프로젝트.supabase.co" required></label><label>공개용 키<input id="public-key" type="text" autocomplete="off" required></label><button type="submit">연결 정보 저장</button></form>
+    </section>
+    <section id="auth-panel" class="panel" hidden>
+      <h2>광고 계정</h2><p>이메일로 로그인하거나 계정을 만들어 주세요.</p>
+      <form id="auth-form"><label>이메일<input id="email" type="email" autocomplete="email" required></label><label>비밀번호<input id="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="actions"><button type="submit">로그인</button><button id="signup" class="secondary" type="button">계정 만들기</button></div></form>
+    </section>
+    <div id="workspace" hidden>
+      <div class="workspace-bar"><span id="account"></span><button id="logout" class="link" type="button">로그아웃</button></div>
+      <div class="grid">
+        <section class="panel"><h2>광고 내용</h2><p>등록한 내용은 관리자가 검토한 후 앱에 표시됩니다.</p>
+          <form id="ad-form">
+            <label>업체명<input id="merchant" maxlength="80" required></label>
+            <label>상품 이미지<input id="image" type="file" accept="image/jpeg,image/png,image/webp" required><small>JPG, PNG, WEBP · 최대 3MB</small></label>
+            <label>제목<input id="title" maxlength="60" required placeholder="예: 일본 eSIM 3일"></label>
+            <label>한 줄 설명<input id="description" maxlength="80" required placeholder="예: 매일 1GB 사용"></label>
+            <div class="two"><label>종류<select id="sim-type"><option value="sim">유심</option><option value="esim">eSIM</option></select></label><label>여행 국가<select id="country"><option value="JP">일본</option><option value="VN">베트남</option><option value="TH">태국</option><option value="US">미국</option><option value="TW">대만</option><option value="CN">중국</option><option value="PH">필리핀</option><option value="SG">싱가포르</option><option value="MY">말레이시아</option><option value="ID">인도네시아</option><option value="FR">프랑스</option><option value="DE">독일</option><option value="IT">이탈리아</option><option value="ES">스페인</option><option value="GB">영국</option><option value="AU">호주</option><option value="CA">캐나다</option><option value="NZ">뉴질랜드</option><option value="CH">스위스</option><option value="HK">홍콩</option><option value="IN">인도</option><option value="MX">멕시코</option><option value="AT">오스트리아</option><option value="PT">포르투갈</option><option value="NL">네덜란드</option><option value="FI">핀란드</option><option value="GR">그리스</option></select></label></div>
+            <div class="two"><label>사용 일수<input id="duration" type="number" min="1" max="365" value="3" required></label><label>가격 (원)<input id="price" type="number" min="0" max="2147483647" placeholder="선택 사항"></label></div>
+            <label>구매 링크<input id="purchase" type="url" placeholder="https://" required></label>
+            <button id="submit-ad" type="submit">검토 요청</button>
+          </form>
+        </section>
+        <aside><section class="panel preview-panel"><span class="eyebrow">미리보기</span><h2>앱에서 이렇게 보여요</h2><div class="preview"><div class="preview-photo"><img id="preview-image" alt="상품 이미지 미리보기" hidden><span id="image-placeholder">이미지</span></div><div class="preview-copy"><span class="badge">광고 · <span id="preview-merchant">업체명</span></span><strong id="preview-title">상품 제목</strong><p id="preview-description">3일 · 한 줄 설명</p><b id="preview-price"></b><small>가격과 조건은 판매처에서 확인 ›</small></div></div><p class="hint">국가와 유심 종류, 여행 일수가 맞는 여행자에게 표시됩니다.</p></section>
+          <section class="panel"><h2>내 검토 요청</h2><p>등록 후 수정이 필요하면 관리자에게 문의해 주세요.</p><div id="drafts"></div></section></aside>
+      </div>
+    </div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <footer>상품 정보와 판매 조건은 판매업체가 정확하게 입력해 주세요.</footer>
+  </main><script src="config.js" defer></script><script src="app.js" defer></script>
+</body></html>
