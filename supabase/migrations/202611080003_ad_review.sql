@@ -7,9 +7,18 @@ create table public.ad_admins (
 alter table public.ad_admins enable row level security;
 revoke all on public.ad_admins from public, anon, authenticated;
 
-create function public.is_ad_admin() returns boolean
+create schema if not exists app_private;
+revoke all on schema app_private from public, anon;
+grant usage on schema app_private to authenticated;
+create function app_private.is_ad_admin() returns boolean
 language sql stable security definer set search_path = '' as $$
-  select exists (select 1 from public.ad_admins where user_id = (select auth.uid()));
+  select (select auth.uid()) is not null and exists (select 1 from public.ad_admins where user_id = (select auth.uid()));
+$$;
+revoke all on function app_private.is_ad_admin() from public, anon;
+grant execute on function app_private.is_ad_admin() to authenticated;
+create function public.is_ad_admin() returns boolean
+language sql stable security invoker set search_path = '' as $$
+  select app_private.is_ad_admin();
 $$;
 revoke all on function public.is_ad_admin() from public, anon;
 grant execute on function public.is_ad_admin() to authenticated;
@@ -25,27 +34,27 @@ grant select on public.advertiser_drafts to authenticated;
 grant insert (merchant_name, title, description, sim_type, country_code, duration_days, price_krw, image_path, purchase_url) on public.advertiser_drafts to authenticated;
 drop policy "advertisers edit own drafts" on public.advertiser_drafts;
 drop policy "advertisers delete own drafts" on public.advertiser_drafts;
-create policy "admins read submissions" on public.advertiser_drafts for select to authenticated using ((select public.is_ad_admin()));
+create policy "admins read submissions" on public.advertiser_drafts for select to authenticated using ((select app_private.is_ad_admin()));
 
 -- Approved images are public; unpublished source images stay private.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('ad-published-images', 'ad-published-images', true, 3145728, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do nothing;
 create policy "admins read draft images" on storage.objects for select to authenticated
-  using (bucket_id = 'ad-draft-images' and (select public.is_ad_admin()));
+  using (bucket_id = 'ad-draft-images' and (select app_private.is_ad_admin()));
 create policy "admins publish images" on storage.objects for insert to authenticated
-  with check (bucket_id = 'ad-published-images' and (select public.is_ad_admin()));
+  with check (bucket_id = 'ad-published-images' and (select app_private.is_ad_admin()));
 create policy "admins delete published images" on storage.objects for delete to authenticated
-  using (bucket_id = 'ad-published-images' and (select public.is_ad_admin()));
+  using (bucket_id = 'ad-published-images' and (select app_private.is_ad_admin()));
 
-create policy "admins read all ads" on public.sim_ads for select to authenticated using ((select public.is_ad_admin()));
+create policy "admins read all ads" on public.sim_ads for select to authenticated using ((select app_private.is_ad_admin()));
 grant select (is_active, starts_at, ends_at) on public.sim_ads to authenticated;
 
-create function public.review_advertisement(p_draft_id uuid, p_approved boolean, p_image_path text default null, p_note text default '') returns void
+create function app_private.review_advertisement(p_draft_id uuid, p_approved boolean, p_image_path text default null, p_note text default '') returns void
 language plpgsql security definer set search_path = '' as $$
 declare d public.advertiser_drafts%rowtype; new_ad_id bigint; image_address text;
 begin
-  if not public.is_ad_admin() then raise exception '관리자 권한이 필요합니다.' using errcode = '42501'; end if;
+  if (select auth.uid()) is null or not app_private.is_ad_admin() then raise exception '관리자 권한이 필요합니다.' using errcode = '42501'; end if;
   select * into d from public.advertiser_drafts where id = p_draft_id for update;
   if not found or d.review_status <> 'pending' then raise exception '이미 검수되었거나 찾을 수 없는 광고입니다.'; end if;
   if char_length(coalesce(p_note, '')) > 300 then raise exception '검수 의견이 너무 깁니다.'; end if;
@@ -66,17 +75,29 @@ begin
   end if;
 end;
 $$;
+revoke all on function app_private.review_advertisement(uuid, boolean, text, text) from public, anon;
+grant execute on function app_private.review_advertisement(uuid, boolean, text, text) to authenticated;
+create function public.review_advertisement(p_draft_id uuid, p_approved boolean, p_image_path text default null, p_note text default '') returns void
+language sql security invoker set search_path = '' as $$
+  select app_private.review_advertisement(p_draft_id, p_approved, p_image_path, p_note);
+$$;
 revoke all on function public.review_advertisement(uuid, boolean, text, text) from public, anon;
 grant execute on function public.review_advertisement(uuid, boolean, text, text) to authenticated;
 
-create function public.set_ad_active(p_ad_id bigint, p_active boolean) returns void
+create function app_private.set_ad_active(p_ad_id bigint, p_active boolean) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  if not public.is_ad_admin() then raise exception '관리자 권한이 필요합니다.' using errcode = '42501'; end if;
+  if (select auth.uid()) is null or not app_private.is_ad_admin() then raise exception '관리자 권한이 필요합니다.' using errcode = '42501'; end if;
   if p_active is null then raise exception '노출 상태가 필요합니다.'; end if;
   update public.sim_ads set is_active = p_active, updated_at = now() where id = p_ad_id;
   if not found then raise exception '광고를 찾을 수 없습니다.'; end if;
 end;
+$$;
+revoke all on function app_private.set_ad_active(bigint, boolean) from public, anon;
+grant execute on function app_private.set_ad_active(bigint, boolean) to authenticated;
+create function public.set_ad_active(p_ad_id bigint, p_active boolean) returns void
+language sql security invoker set search_path = '' as $$
+  select app_private.set_ad_active(p_ad_id, p_active);
 $$;
 revoke all on function public.set_ad_active(bigint, boolean) from public, anon;
 grant execute on function public.set_ad_active(bigint, boolean) to authenticated;
