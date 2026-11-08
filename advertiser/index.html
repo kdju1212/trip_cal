@@ -7,7 +7,7 @@
 </head>
 <body>
   <main>
-    <header><span class="eyebrow">여행 준비 도우미</span><h1>유심·eSIM 광고 등록</h1><p>상품을 입력하고 앱에 보일 모습을 미리 확인하세요.</p></header>
+    <nav class="top-nav"><a class="active" href="index.html">광고주 센터</a><a href="admin.html">관리자 센터</a></nav><header><span class="eyebrow">여행 준비 도우미</span><h1>유심·eSIM 광고 등록</h1><p>상품을 입력하고 앱에 보일 모습을 미리 확인하세요.</p></header>
     <section id="config-panel" class="panel" hidden>
       <h2>서버 연결</h2><p>운영자가 프로젝트의 공개 정보를 설정합니다.</p>
       <form id="config-form"><label>Supabase URL<input id="project-url" type="url" placeholder="https://프로젝트.supabase.co" required></label><label>공개용 키<input id="public-key" type="text" autocomplete="off" required></label><button type="submit">연결 정보 저장</button></form>
@@ -32,7 +32,7 @@
           </form>
         </section>
         <aside><section class="panel preview-panel"><span class="eyebrow">미리보기</span><h2>앱에서 이렇게 보여요</h2><div class="preview"><div class="preview-photo"><img id="preview-image" alt="상품 이미지 미리보기" hidden><span id="image-placeholder">이미지</span></div><div class="preview-copy"><span class="badge">광고 · <span id="preview-merchant">업체명</span></span><strong id="preview-title">상품 제목</strong><p id="preview-description">3일 · 한 줄 설명</p><b id="preview-price"></b><small>가격과 조건은 판매처에서 확인 ›</small></div></div><p class="hint">국가와 유심 종류, 여행 일수가 맞는 여행자에게 표시됩니다.</p></section>
-          <section class="panel"><h2>내 검토 요청</h2><p>등록 후 수정이 필요하면 관리자에게 문의해 주세요.</p><div id="drafts"></div></section></aside>
+          <section class="panel"><h2>내 검토 요청</h2><p>검수 결과를 확인하고, 수정이 필요하면 다시 등록해 주세요.</p><div id="drafts"></div></section></aside>
       </div>
     </div>
     <p id="message" role="status" aria-live="polite"></p>

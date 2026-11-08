@@ -90,12 +90,12 @@
   async function loadDrafts() {
     const list = $('drafts'); list.replaceChildren();
     try {
-      const drafts = await request('/rest/v1/advertiser_drafts?select=id,title,created_at&order=created_at.desc', {headers: headers(true)});
+      const drafts = await request('/rest/v1/advertiser_drafts?select=id,title,created_at,review_status,review_note&order=created_at.desc', {headers: headers(true)});
       if (!drafts.length) { list.textContent = '아직 등록한 광고가 없어요.'; return; }
       for (const draft of drafts) {
         const item = document.createElement('div'); item.className = 'draft';
         const title = document.createElement('strong'); title.textContent = draft.title;
-        const note = document.createElement('small'); note.textContent = '검토 요청됨 · 게재 여부는 관리자에게 확인해 주세요.';
+        const note = document.createElement('small'); note.textContent = ({pending:'검토 대기', approved:'승인됨', rejected:'반려됨'})[draft.review_status] || '상태 확인 중'; if (draft.review_status === 'rejected' && draft.review_note) note.textContent += ` · ${draft.review_note}`;
         item.append(title, note); list.append(item);
       }
     } catch (_) { list.textContent = '등록 내역을 불러오지 못했어요.'; }
@@ -111,11 +111,9 @@
     if (!description || /[\r\n]/.test(description)) { message('설명은 한 줄로 입력해 주세요.'); return; }
     const extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
     const objectPath = `${state.session.user.id}/${crypto.randomUUID()}.${extension}`;
-    let uploaded = false;
     $('submit-ad').disabled = true; message('광고를 등록하고 있어요.');
     try {
       await request(`/storage/v1/object/ad-draft-images/${objectPath}`, {method: 'POST', headers: {...headers(true), 'Content-Type': file.type, 'x-upsert': 'false'}, body: file});
-      uploaded = true;
       const body = {
         merchant_name: $('merchant').value.trim(), title: $('title').value.trim(), description,
         sim_type: $('sim-type').value, country_code: $('country').value,
@@ -128,8 +126,8 @@
       state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true); updatePreview();
       message('검토 요청을 보냈어요. 관리자 확인 후 앱에 표시됩니다.'); await loadDrafts();
     } catch (_) {
-      if (uploaded) { try { await request('/storage/v1/object/ad-draft-images', {method:'DELETE', headers:{...headers(true), 'Content-Type':'application/json'}, body:JSON.stringify({prefixes:[objectPath]})}); } catch (_) { /* administrator can remove orphaned uploads */ } }
-      message('등록하지 못했어요. 입력 내용을 확인하고 다시 시도해 주세요.');
+      message('등록 결과를 확인하지 못했어요. 중복 등록을 피하려면 내 검토 요청을 먼저 확인해 주세요.');
+      await loadDrafts();
     } finally { $('submit-ad').disabled = false; }
   });
   try {
