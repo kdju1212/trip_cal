@@ -227,7 +227,7 @@
     $('preview-title').textContent = $('title').value.trim() || '상품 제목';
     $('preview-description').textContent = `${$('duration').value || '3'}일 · ${$('description').value.trim() || '한 줄 설명'}`;
     const price = $('price').value;
-    $('preview-price').textContent = price ? `등록 가격 ${Number(price).toLocaleString('ko-KR')}원` : '';
+    $('preview-price').textContent = price ? `가격 ${Number(price).toLocaleString('ko-KR')}원` : '';
   }
   $('ad-form').addEventListener('input', updatePreview);
   $('image').addEventListener('change', async () => {

@@ -91,12 +91,13 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
                               errorBuilder: (_, _, _) => Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined)))),
                         const SizedBox(width: 16),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('광고 · ${ad.merchant}', style: Theme.of(context).textTheme.labelMedium),
-                          const SizedBox(height: 4),
                           Text(ad.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                          Text('${ad.duration}일${ad.description.isEmpty ? '' : ' · ${ad.description}'}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                          if (ad.price != null) Text('등록 가격 ${formatWon(BigInt.from(ad.price!))}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('가격과 조건은 판매처에서 확인 ›', style: Theme.of(context).textTheme.bodySmall),
+                          Row(children: [
+                            Expanded(child: Text('${ad.duration}일${ad.description.isEmpty ? '' : ' · ${ad.description}'}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            const SizedBox(width: 8),
+                            Flexible(child: Text('광고 · ${ad.merchant}', style: Theme.of(context).textTheme.labelMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          ]),
+                          if (ad.price != null) Text('가격 ${formatWon(BigInt.from(ad.price!))}', style: const TextStyle(fontWeight: FontWeight.bold)),
                         ])),
                       ])),
                     ),

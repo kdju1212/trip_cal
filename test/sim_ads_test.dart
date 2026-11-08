@@ -14,7 +14,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('광고 · 판매점'), findsOneWidget);
     expect(find.text('일본 데이터'), findsOneWidget);
-    expect(find.text('등록 가격 5,000원'), findsOneWidget);
+    expect(find.text('가격 5,000원'), findsOneWidget);
+    expect(find.text('가격과 조건은 판매처에서 확인 ›'), findsNothing);
+    expect(tester.getTopLeft(find.text('광고 · 판매점')).dx, greaterThan(tester.getTopLeft(find.text('3일 · 하루 1GB')).dx));
     expect(find.text('일본 eSIM 3일'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     service.close();
