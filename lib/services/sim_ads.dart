@@ -40,18 +40,12 @@ class SimAdsService {
   Future<List<SimAd>> fetch({required String countryCode, required bool isEsim, int? days}) async {
     if (!configured || !RegExp(r'^[A-Z]{2}$').hasMatch(countryCode) || countryCode == 'KR') { return []; }
     final root = Uri.parse(url);
-    final uri = root.replace(path: '${root.path.replaceFirst(RegExp(r'/$'), '')}/rest/v1/sim_ads', queryParameters: {
-      'select': 'id,merchant_name,title,description,sim_type,country_code,duration_days,price_krw,image_url,purchase_url,priority,updated_at',
-      'country_code': 'eq.$countryCode',
-      'sim_type': 'eq.${isEsim ? 'esim' : 'sim'}',
-      if (days != null) 'duration_days': 'eq.$days',
-      'order': 'priority.desc,id.desc',
-      'limit': '50',
-    });
-    final response = await client.get(uri, headers: {
+    final uri = root.replace(path: '${root.path.replaceFirst(RegExp(r'/$'), '')}/rest/v1/rpc/list_ranked_sim_ads');
+    final response = await client.post(uri, headers: {
       'apikey': anonKey,
       if (!anonKey.startsWith('sb_publishable_')) 'Authorization': 'Bearer $anonKey',
-    }).timeout(const Duration(seconds: 8));
+      'Content-Type': 'application/json',
+    }, body: jsonEncode({'p_country': countryCode, 'p_type': isEsim ? 'esim' : 'sim', 'p_days': days})).timeout(const Duration(seconds: 8));
     if (response.statusCode != 200) { throw const FormatException('광고 상품을 불러오지 못했어요.'); }
     final json = jsonDecode(response.body);
     if (json is! List) { throw const FormatException('광고 상품 응답을 확인해 주세요.'); }

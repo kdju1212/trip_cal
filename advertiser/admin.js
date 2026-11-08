@@ -108,7 +108,7 @@
       const group=state.groups.find(g => g.id === draft.group_id);
       if (group) {
         const campaign=state.campaigns.find(c => c.id === group.campaign_id);
-        card.append(node('p',`캠페인: ${campaign?.name || '확인 불가'} · 광고그룹: ${group.name} · 설정 입찰가: ${Number(group.cpc_bid_krw).toLocaleString('ko-KR')}원 (자동 순위 미적용)`,'status-note'));
+        card.append(node('p',`캠페인: ${campaign?.name || '확인 불가'} · 광고그룹: ${group.name} · 설정 입찰가: ${Number(group.cpc_bid_krw).toLocaleString('ko-KR')}원 (새 앱부터 입찰가 순위 적용)`,'status-note'));
       }
       if (secureUrl(draft.purchase_url)) { const link=node('a','판매처 링크 확인 ↗'); link.href=draft.purchase_url; link.target='_blank'; link.rel='noopener noreferrer'; card.append(link); }
       if (draft.review_note) card.append(node('p',`검수 의견: ${draft.review_note}`,'status-note'));

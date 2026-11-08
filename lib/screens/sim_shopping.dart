@@ -62,78 +62,65 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
           const SizedBox(height: 6),
           Text(isEsim ? '구매 전 기기의 eSIM 지원 여부를 확인하세요.' : '구매 전 유심 수령 방법과 기기 호환 여부를 확인하세요.'),
           const SizedBox(height: 18),
-          if (ads.configured && country != null && country.code != 'KR')
-            FutureBuilder<List<SimAd>>(
-              future: listings,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
-                }
-                if (snapshot.hasError) {
-                  return Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [
-                    const Expanded(child: Text('광고 상품을 불러오지 못했어요.')),
-                    TextButton(onPressed: () => setState(() => listings = loadAds()), child: const Text('다시 시도')),
-                  ]));
-                }
-                final products = snapshot.data ?? [];
-                if (products.isEmpty) return const SizedBox.shrink();
-                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('업체 광고', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  for (final ad in products) Card(
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () { if (ad.id != null) { unawaited(ads.recordEvents([ad.id!], 'click')); } openExternal(context, ad.purchaseUrl); },
-                      child: Padding(padding: const EdgeInsets.all(16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        ClipRRect(borderRadius: BorderRadius.circular(12), child: ad.imageUrl == null
-                          ? Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined))
-                          : Image.network(ad.imageUrl!, width: 80, height: 80, fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined)))),
-                        const SizedBox(width: 16),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(ad.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                          Row(children: [
-                            Expanded(child: Text('${ad.duration}일${ad.description.isEmpty ? '' : ' · ${ad.description}'}', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            const SizedBox(width: 8),
-                            Flexible(child: Text('광고 · ${ad.merchant}', style: Theme.of(context).textTheme.labelMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                          ]),
-                          if (ad.price != null) Text('가격 ${formatWon(BigInt.from(ad.price!))}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        ])),
-                      ])),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ]);
-              },
-            ),
-          for (final (term, description, icon) in options)
-            Card(
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  final uri = Uri.https('search.shopping.naver.com', '/search/all', {'query': '$place $type $term'});
-                  openExternal(context, uri.toString());
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    Container(
-                      width: 80, height: 80,
-                      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(12)),
-                      child: Icon(icon, size: 36, color: Theme.of(context).colorScheme.onPrimaryContainer),
-                    ),
+          FutureBuilder<List<SimAd>>(
+            future: listings,
+            builder: (context, snapshot) {
+              final products = snapshot.data ?? <SimAd>[];
+              final cards = <Widget>[];
+              if (snapshot.connectionState != ConnectionState.done && ads.configured && country != null && country.code != 'KR') {
+                cards.add(const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())));
+              }
+              if (snapshot.hasError) {
+                cards.add(Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [
+                  const Expanded(child: Text('광고 상품을 불러오지 못했어요.')),
+                  TextButton(onPressed: () => setState(() => listings = loadAds()), child: const Text('다시 시도')),
+                ])));
+              }
+              Widget adCard(SimAd ad) => Card(
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () { if (ad.id != null) { unawaited(ads.recordEvents([ad.id!], 'click')); } openExternal(context, ad.purchaseUrl); },
+                  child: Padding(padding: const EdgeInsets.all(16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    ClipRRect(borderRadius: BorderRadius.circular(12), child: ad.imageUrl == null
+                      ? Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined))
+                      : Image.network(ad.imageUrl!, width: 80, height: 80, fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined)))),
+                    const SizedBox(width: 16),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(ad.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                      Row(children: [
+                        Expanded(child: Text('${ad.duration}일${ad.description.isEmpty ? '' : ' · ${ad.description}'}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                        const SizedBox(width: 8),
+                        Flexible(child: Text('광고 · ${ad.merchant}', style: Theme.of(context).textTheme.labelMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      ]),
+                      if (ad.price != null) Text('가격 ${formatWon(BigInt.from(ad.price!))}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ])),
+                  ])),
+                ),
+              );
+              Widget organicCard((String, String, IconData) option) {
+                final (term, description, icon) = option;
+                return Card(clipBehavior: Clip.antiAlias, child: InkWell(
+                  onTap: () { final uri = Uri.https('search.shopping.naver.com', '/search/all', {'query': '$place $type $term'}); openExternal(context, uri.toString()); },
+                  child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+                    Container(width: 80, height: 80, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 36, color: Theme.of(context).colorScheme.onPrimaryContainer)),
                     const SizedBox(width: 16),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('$place $type $term', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Text(description, style: Theme.of(context).textTheme.bodySmall),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6), Text(description, style: Theme.of(context).textTheme.bodySmall), const SizedBox(height: 8),
                       Text('상품과 가격 보기 ›', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
                     ])),
-                  ]),
-                ),
-              ),
-            ),
+                  ])),
+                ));
+              }
+              // Two sponsored listings, then up to two search links, then the rest.
+              cards.addAll(products.take(2).map(adCard));
+              cards.addAll(options.take(2).map(organicCard));
+              cards.addAll(products.skip(2).map(adCard));
+              cards.addAll(options.skip(2).map(organicCard));
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: cards);
+            },
+          ),
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -21,12 +22,29 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     service.close();
   });
+  testWidgets('광고 두 개 다음에 검색 항목을 배치한다', (tester) async {
+    final client = MockClient((request) async => http.Response(jsonEncode([
+      for (var i = 1; i <= 3; i++) {'merchant_name':'판매점', 'title':'광고 상품 $i', 'description':'하루 1GB', 'duration_days':3, 'purchase_url':'https://example.com/item'}
+    ]), 200, headers: {'content-type':'application/json; charset=utf-8'}));
+    final service = SimAdsService(client: client, url: 'https://example.supabase.co', anonKey: 'public-key');
+    await tester.pumpWidget(MaterialApp(home: SimShoppingScreen(country: countryByCode('JP'), isEsim: true, departure: '2027-01-01', endDate: '2027-01-03', adsService: service)));
+    await tester.pumpAndSettle();
+    final second = tester.getTopLeft(find.text('광고 상품 2')).dy;
+    final search = tester.getTopLeft(find.text('일본 eSIM 3일')).dy;
+    final third = tester.getTopLeft(find.text('광고 상품 3')).dy;
+    expect(second, lessThan(search));
+    expect(search, lessThan(third));
+    await tester.pumpWidget(const SizedBox());
+    service.close();
+  });
   test('여행지와 종류, 일수에 맞는 광고 상품을 요청한다', () async {
     final client = MockClient((request) async {
-      expect(request.url.path, '/rest/v1/sim_ads');
-      expect(request.url.queryParameters['country_code'], 'eq.JP');
-      expect(request.url.queryParameters['sim_type'], 'eq.esim');
-      expect(request.url.queryParameters['duration_days'], 'eq.3');
+      expect(request.url.path, '/rest/v1/rpc/list_ranked_sim_ads');
+      expect(request.method, 'POST');
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(body['p_country'], 'JP');
+      expect(body['p_type'], 'esim');
+      expect(body['p_days'], 3);
       expect(request.headers['apikey'], 'public-key');
       return http.Response('[{"merchant_name":"판매점","title":"일본 데이터","description":"하루 1GB","duration_days":3,"price_krw":5000,"purchase_url":"https://example.com/item","image_url":null}]', 200, headers: {'content-type': 'application/json; charset=utf-8'});
     });
