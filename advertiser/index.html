@@ -72,6 +72,15 @@
       </div>
       </div>
     </div>
+    <dialog id="edit-dialog" class="edit-dialog"><form id="edit-form">
+      <div class="edit-heading"><h2 id="edit-title">수정</h2><button id="edit-close" class="link" type="button" aria-label="닫기">✕</button></div>
+      <p id="edit-help"></p>
+      <div id="edit-basic"><label>이름<input id="edit-name" maxlength="80"></label></div>
+      <div id="edit-campaign-fields"><label>일 예산 (원, 선택)<input id="edit-budget" type="number" min="0" max="2147483647"></label><small>예산은 참고용이며 자동 지출 제한은 아직 적용되지 않아요.</small></div>
+      <div id="edit-group-fields"><label>클릭당 입찰가 (원)<input id="edit-bid" type="number" min="0" max="2147483647"></label><div class="two"><label>종류<select id="edit-sim"><option value="sim">유심</option><option value="esim">eSIM</option></select></label><label>여행 국가<select id="edit-country"></select></label></div><label>사용 일수<input id="edit-duration" type="number" min="1" max="365"></label><small>국가·종류·일수 변경은 소재를 수정하고 다시 승인받은 뒤 적용됩니다. 입찰가는 아직 자동 순위 결정에 사용되지 않아요.</small></div>
+      <div id="edit-creative-fields"><label>업체명<input id="edit-merchant" maxlength="80"></label><label>제목<input id="edit-creative-title" maxlength="60"></label><label>한 줄 설명<input id="edit-description" maxlength="80"></label><label>가격 (원, 선택)<input id="edit-price" type="number" min="0" max="2147483647"></label><label>구매 링크<input id="edit-url" type="url" placeholder="https://"></label><label>이미지 변경 (선택)<input id="edit-image" type="file" accept="image/jpeg,image/png,image/webp"><small>변경할 때만 선택 · 정사각형 1:1 · 최대 3MB</small></label></div>
+      <p id="edit-message" role="status" aria-live="polite"></p><div class="actions"><button id="edit-save" type="submit">저장</button><button id="edit-cancel" type="button" class="secondary">취소</button></div>
+    </form></dialog>
     <p id="message" role="status" aria-live="polite"></p>
     <footer>상품 정보와 판매 조건은 판매업체가 정확하게 입력해 주세요.</footer>
   </main><script src="config.js" defer></script><script src="session.js" defer></script><script src="image-ratio.js" defer></script><script src="app.js" defer></script>

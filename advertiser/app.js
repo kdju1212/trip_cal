@@ -187,9 +187,9 @@
     const owner = encodeURIComponent(state.session.user.id);
     try {
       const [campaigns, groups, drafts, metrics] = await Promise.all([
-        request(`/rest/v1/ad_campaigns?select=id,name&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request(`/rest/v1/ad_groups?select=id,campaign_id,name&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request(`/rest/v1/advertiser_drafts?select=id,group_id,title,review_status&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request('/rest/v1/rpc/my_ad_performance_period', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})})
       ]);
       if (requestId !== state.performanceRequest || !state.session) return;
@@ -215,14 +215,14 @@
     $('performance-context').textContent = [state.performanceCampaign ? campaignNames.get(state.performanceCampaign) : '전체 캠페인', state.performanceGroup ? groups.get(state.performanceGroup)?.name : null].filter(Boolean).join('  ›  ');
     show('clear-performance-filter', !!state.performanceCampaign || !!state.performanceGroup);
     let rows;
-    if (state.performanceView === 'creative') rows = visibleDrafts.map(d => ({name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', status:({pending:'검토 대기',approved:'승인',rejected:'반려'})[d.review_status] || '확인 중', drafts:[d]}));
+    if (state.performanceView === 'creative') rows = visibleDrafts.map(d => ({editId:d.id, name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', status:({pending:'검토 대기',approved:'승인',rejected:'반려'})[d.review_status] || '확인 중', drafts:[d]}));
     else if (state.performanceView === 'group') rows = data.groups.filter(g => !state.performanceCampaign || g.campaign_id === state.performanceCampaign).map(g => ({id:g.id, name:g.name, detail:campaignNames.get(g.campaign_id) || '', drafts:visibleDrafts.filter(d => d.group_id === g.id)}));
     else rows = data.campaigns.filter(c => !state.performanceCampaign || c.id === state.performanceCampaign).map(c => ({id:c.id, name:c.name, detail:'광고그룹 보기', drafts:visibleDrafts.filter(d => groups.get(d.group_id)?.campaign_id === c.id)}));
     if (!rows.length) { list.textContent = '표시할 항목이 없어요. 광고를 등록하면 여기에 표시됩니다.'; return; }
     const table=document.createElement('table'); table.className='performance-table';
     const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
     const thead=document.createElement('thead'), header=document.createElement('tr');
-    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '목록 불러옴', '클릭', '화면 노출', '광고비']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
+    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '목록 불러옴', '클릭', '화면 노출', '광고비', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
     thead.append(header); table.append(thead);
     const body=document.createElement('tbody');
     for (const item of rows) {
@@ -238,6 +238,10 @@
       const detail=document.createElement('small'); detail.textContent=item.detail; nameCell.append(label,detail); row.append(nameCell);
       const m=sums(item.drafts);
       for (const value of [item.status || '—',m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),'—','—']) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
+      const action=document.createElement('td'), edit=document.createElement('button');
+      edit.type='button'; edit.className='link'; edit.textContent='수정';
+      const kind=state.performanceView, editId=item.editId || item.id;
+      edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit); row.append(action);
       body.append(row);
     }
     table.append(body); const wrapper=document.createElement('div'); wrapper.className='performance-table-wrap'; wrapper.append(table); list.append(wrapper);
@@ -253,6 +257,57 @@
   $('clear-performance-filter').addEventListener('click', () => { state.performanceCampaign=null; state.performanceGroup=null; renderPerformance(); });
   $('performance-period').addEventListener('change', loadPerformance);
   $('refresh-performance').addEventListener('click', loadPerformance);
+  let editor = null;
+  function openEditor(kind, id) {
+    const data=state.performance;
+    const item=kind === 'campaign' ? data.campaigns.find(x=>x.id===id) : kind === 'group' ? data.groups.find(x=>x.id===id) : data.drafts.find(x=>x.id===id);
+    if (!item) return;
+    editor={kind,id}; $('edit-form').reset(); $('edit-message').textContent='';
+    $('edit-title').textContent=({campaign:'캠페인 수정',group:'광고그룹 수정',creative:'소재 수정'})[kind];
+    $('edit-help').textContent=kind === 'creative' ? '수정하면 다시 검수합니다. 이미 노출 중인 광고는 승인될 때까지 일시 중지됩니다.' : '변경한 설정을 저장해 주세요.';
+    show('edit-basic',kind !== 'creative'); show('edit-campaign-fields',kind === 'campaign'); show('edit-group-fields',kind === 'group'); show('edit-creative-fields',kind === 'creative');
+    for (const id of ['edit-name','edit-budget','edit-bid','edit-sim','edit-country','edit-duration','edit-merchant','edit-creative-title','edit-description','edit-price','edit-url','edit-image']) {
+      const field=$(id); const enabled= id === 'edit-name' ? kind !== 'creative' : id === 'edit-budget' ? kind === 'campaign' : ['edit-bid','edit-sim','edit-country','edit-duration'].includes(id) ? kind === 'group' : kind === 'creative';
+      field.disabled=!enabled; field.required=enabled && ['edit-name','edit-bid','edit-duration','edit-merchant','edit-creative-title','edit-description','edit-url'].includes(id);
+    }
+    if (kind === 'campaign') { $('edit-name').value=item.name; $('edit-budget').value=item.daily_budget_krw ?? ''; }
+    if (kind === 'group') {
+      $('edit-name').value=item.name; $('edit-bid').value=item.cpc_bid_krw; $('edit-sim').value=item.sim_type;
+      $('edit-country').replaceChildren(...Array.from($('country').options, option => option.cloneNode(true)));
+      $('edit-country').value=item.country_code; $('edit-duration').value=item.duration_days;
+    }
+    if (kind === 'creative') { $('edit-merchant').value=item.merchant_name; $('edit-creative-title').value=item.title; $('edit-description').value=item.description; $('edit-price').value=item.price_krw ?? ''; $('edit-url').value=item.purchase_url; }
+    $('edit-dialog').showModal();
+  }
+  $('edit-close').addEventListener('click', () => $('edit-dialog').close());
+  $('edit-cancel').addEventListener('click', () => $('edit-dialog').close());
+  $('edit-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!editor || !state.session || $('edit-save').disabled) return;
+    const current={...editor}, button=$('edit-save'); button.disabled=true; $('edit-message').textContent='저장 중이에요.';
+    try {
+      if (current.kind === 'creative') {
+        const merchant=$('edit-merchant').value.trim(), title=$('edit-creative-title').value.trim(), description=$('edit-description').value.trim(), url=$('edit-url').value.trim();
+        if (!merchant || !title || !description || /[\r\n]/.test(description) || !https(url)) throw new Error('업체명, 제목, 한 줄 설명과 https 구매 링크를 확인해 주세요.');
+        let path=null; const file=$('edit-image').files[0];
+        if (file) {
+          if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size>3145728 || !(await window.TripImageRatio.isSquare(file))) throw new Error('이미지는 3MB 이하의 1:1 JPG, PNG, WEBP 파일로 선택해 주세요.');
+          const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type]; path=`${state.session.user.id}/${crypto.randomUUID()}.${ext}`;
+          await request(`/storage/v1/object/ad-draft-images/${path}`, {method:'POST',headers:{...headers(true),'Content-Type':file.type,'x-upsert':'false'},body:file});
+        }
+        await request('/rest/v1/rpc/edit_ad_creative', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_id:current.id,p_merchant:merchant,p_title:title,p_description:description,p_price:$('edit-price').value === '' ? null : Number($('edit-price').value),p_url:url,p_image_path:path})});
+      } else {
+        const name=$('edit-name').value.trim(); if (!name) throw new Error('이름을 입력해 주세요.');
+        const campaign=current.kind==='campaign';
+        const payload=campaign ? {name,daily_budget_krw:$('edit-budget').value === '' ? null : Number($('edit-budget').value)} : {name,cpc_bid_krw:Number($('edit-bid').value),sim_type:$('edit-sim').value,country_code:$('edit-country').value,duration_days:Number($('edit-duration').value)};
+        const table=campaign?'ad_campaigns':'ad_groups';
+        const result=await request(`/rest/v1/${table}?id=eq.${encodeURIComponent(current.id)}&owner_id=eq.${encodeURIComponent(state.session.user.id)}&select=id`,{method:'PATCH',headers:{...headers(true),'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify(payload)});
+        if (!Array.isArray(result) || result.length!==1) throw new Error('저장할 항목을 찾을 수 없어요. 새로고침해 주세요.');
+      }
+      $('edit-dialog').close(); message(current.kind === 'creative' ? '소재를 수정하고 다시 검토 요청했어요.' : '변경 사항을 저장했어요.'); await Promise.all([loadPerformance(),loadDrafts()]);
+    } catch (error) { $('edit-message').textContent=error.message || '저장하지 못했어요. 다시 시도해 주세요.'; }
+    finally { button.disabled=false; }
+  });
   function updatePreview() {
     $('preview-merchant').textContent = $('merchant').value.trim() || '업체명';
     $('preview-title').textContent = $('title').value.trim() || '상품 제목';
