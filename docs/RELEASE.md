@@ -17,11 +17,11 @@ keytool -genkeypair -v -keystore C:\secure\trip-cal-upload.jks -keyalg RSA -keys
 flutter build appbundle --release --no-shrink
 ```
 
-결과: `build/app/outputs/bundle/release/app-release.aab`. 키 설정이 없으면 테스트용 debug 서명이므로 업로드하면 안 됩니다. 업로드 전 `jarsigner -verify -verbose -certs` 등으로 실제 서명을 확인하세요. Play App Signing 사용과 키 백업/보관 책임을 정하세요.
+결과: `build/app/outputs/bundle/release/app-release.aab`. 키 설정이 없으면 정식 AAB 빌드는 중단됩니다. 테스트용 릴리스 APK는 debug 서명을 사용할 수 있으므로 배포하면 안 됩니다. 업로드 전 `jarsigner -verify -verbose -certs` 등으로 실제 서명을 확인하세요. Play App Signing 사용과 키 백업/보관 책임을 정하세요.
 
 ## Play 제출 전 남은 작업
 
-- 운영자명/개인정보 문의처, 공개 개인정보처리방침 HTTPS URL을 확정하고 Play 등록정보 및 앱 안내를 갱신합니다.
+- 운영자명/개인정보 문의처, 보유기간, 공개 개인정보처리방침 HTTPS URL을 확정하고 Play 등록정보 및 앱 안내를 갱신합니다. 광고 활동 기록과 제3자 전송도 반영합니다.
 - 대상 연령, 콘텐츠 등급, 앱 액세스(로그인 없음), 타깃 API와 SDK 정책을 제출 시점에 확인합니다.
 - 물리 Android 기기(API 24, 26, 33, 34 이상 포함)에서 알림 권한 거절/허용, 앱 종료·재부팅·자정·시간대 변경·절전·여행 삭제와 만료를 테스트합니다. Ongoing 알림의 해제 불가능성을 보장하지 않습니다. 강제 종료 상태의 백그라운드 동작은 보장하지 않습니다.
 - 오프라인·0예산·큰 금액·큰 글씨·화면 회전·한국어·다크모드를 검증합니다.
@@ -30,3 +30,9 @@ flutter build appbundle --release --no-shrink
 - 내부/비공개 테스트 및 계정별 Play 테스트 요구사항을 완료하고 사용자가 게시를 승인한 뒤 제출합니다.
 
 릴리스 코드 축소는 WorkManager 데이터베이스 생성자가 제거되어 앱이 시작할 때 종료되는 문제를 방지하기 위해 비활성화했습니다. 최적화 설정을 변경하는 경우 반드시 실제 릴리스 APK의 시작을 Android 기기에서 다시 검증하세요.
+
+## 무료 광고 시험 운영 준비
+
+- 무료 시험 운영에서는 광고비를 청구하지 않습니다. 현재 입찰가 순 정렬은 제공하지만 클릭 과금, 결제, 자동 예산 중지 및 부정 클릭 검증은 구현되지 않았습니다. 이 상태로 클릭당 요금을 청구하지 않습니다.
+- 공개 광고센터는 추가 보안 검증과 접근 제어 확인 후 공개합니다. 클릭 기록은 클라이언트 요청이라 조작될 수 있으므로 청구 근거로 사용할 수 없습니다.
+- 광고·검색 링크 배치와 실제 상품 정보, 국가·유심 유형·일수 필터를 실제 설치한 앱에서 검증합니다.

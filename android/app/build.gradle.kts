@@ -11,6 +11,11 @@ val sideBySide = providers.gradleProperty("sideBySide").orNull == "true"
 val signingProperties = Properties()
 val signingFile = rootProject.file("key.properties")
 if (signingFile.exists()) signingFile.inputStream().use { signingProperties.load(it) }
+// Never produce a Play Store release bundle with the debug key.
+if (!signingFile.exists() && gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) && it.contains("release", ignoreCase = true) }) {
+    throw GradleException("A release signing key is required for a release app bundle. Configure android/key.properties.")
+}
+
 
 android {
     namespace = "com.tripcal.app"

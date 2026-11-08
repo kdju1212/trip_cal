@@ -26,9 +26,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/tips/
-# Linux test runners use their system SQLite; Android keeps the package default.
+# The sqlite3 package is only used by desktop tests; Android uses sqflite.
 hooks:
   user_defines:
     sqlite3:
       source:
         linux: system
+        android: system
