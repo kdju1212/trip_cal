@@ -1,15 +1,18 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../domain.dart';
 import '../widgets/common.dart';
 import '../services/sim_ads.dart';
+import '../storage.dart';
 
 /// Search links show current third-party results; they are not offers in this app.
 class SimShoppingScreen extends StatefulWidget {
-  const SimShoppingScreen({super.key, required this.country, required this.isEsim, this.departure, this.endDate, this.adsService});
+  const SimShoppingScreen({super.key, required this.country, required this.isEsim, this.departure, this.endDate, this.adsService, this.storage});
   final Country? country;
   final bool isEsim;
   final SimAdsService? adsService;
+  final Storage? storage;
   final String? departure;
   final String? endDate;
 
@@ -20,6 +23,28 @@ class SimShoppingScreen extends StatefulWidget {
 class _SimShoppingScreenState extends State<SimShoppingScreen> {
   late final SimAdsService ads = widget.adsService ?? SimAdsService();
   late Future<List<SimAd>> listings = loadAds();
+  late final Future<String?> installationId = loadInstallationId();
+  Future<String?> loadInstallationId() async {
+    final storage = widget.storage;
+    if (storage == null) { return null; }
+    try {
+      final existing = await storage.setting<String>('ad_installation_id', '');
+      if (RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$').hasMatch(existing)) { return existing; }
+      final random = Random.secure();
+      final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+      final id = '${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20)}';
+      await storage.setSetting('ad_installation_id', id);
+      return id;
+    } catch (_) { return null; }
+  }
+  Future<void> recordClick(int adId) async {
+    final id = await installationId;
+    if (id == null) { await ads.recordEvents([adId], 'click'); return; }
+    await ads.recordCheckedClick(adId, id);
+  }
   Future<List<SimAd>> loadAds() async {
     final products = await ads.fetch(countryCode: widget.country?.code ?? '', isEsim: widget.isEsim, days: tripCalendarDays(widget.departure, widget.endDate));
     unawaited(ads.recordEvents(products.map((ad) => ad.id).whereType<int>().toList(), 'loaded'));
@@ -79,7 +104,7 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
               Widget adCard(SimAd ad) => Card(
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: () { if (ad.id != null) { unawaited(ads.recordEvents([ad.id!], 'click')); } openExternal(context, ad.purchaseUrl); },
+                  onTap: () { if (ad.id != null) { unawaited(recordClick(ad.id!)); } openExternal(context, ad.purchaseUrl); },
                   child: Padding(padding: const EdgeInsets.all(16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     ClipRRect(borderRadius: BorderRadius.circular(12), child: ad.imageUrl == null
                       ? Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined))

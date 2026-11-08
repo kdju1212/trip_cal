@@ -64,5 +64,17 @@ class SimAdsService {
       }, body: jsonEncode({'p_ids': ids.take(50).toList(), 'p_event': event})).timeout(const Duration(seconds: 5));
     } catch (_) { /* Statistics must not interrupt shopping. */ }
   }
+  Future<void> recordCheckedClick(int adId, String installationId) async {
+    if (!configured) { return; }
+    final root = Uri.parse(url);
+    final uri = root.replace(path: '${root.path.replaceFirst(RegExp(r'/$'), '')}/rest/v1/rpc/record_checked_click');
+    try {
+      await client.post(uri, headers: {
+        'apikey': anonKey,
+        if (!anonKey.startsWith('sb_publishable_')) 'Authorization': 'Bearer $anonKey',
+        'Content-Type': 'application/json',
+      }, body: jsonEncode({'p_ad_id': adId, 'p_installation_id': installationId})).timeout(const Duration(seconds: 5));
+    } catch (_) { /* Click logging must not interrupt shopping. */ }
+  }
   void close() => client.close();
 }

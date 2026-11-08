@@ -183,14 +183,14 @@
     if (!state.session) return;
     const requestId = ++state.performanceRequest;
     const list = $('performance-list'); list.textContent = '성과를 불러오고 있어요.';
-    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—';
+    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—'; $('performance-candidate').textContent = '—'; $('performance-excluded').textContent = '—';
     const owner = encodeURIComponent(state.session.user.id);
     try {
       const [campaigns, groups, drafts, metrics] = await Promise.all([
         request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request('/rest/v1/rpc/my_ad_performance_period', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})})
+        request('/rest/v1/rpc/my_ad_performance_breakdown', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})})
       ]);
       if (requestId !== state.performanceRequest || !state.session) return;
       if (![campaigns, groups, drafts, metrics].every(Array.isArray)) throw new Error('Invalid response');
@@ -208,10 +208,12 @@
     const groups = new Map(data.groups.map(g => [g.id,g]));
     const campaignNames = new Map(data.campaigns.map(c => [c.id,c.name]));
     const visibleDrafts = data.drafts.filter(d => (!state.performanceCampaign || groups.get(d.group_id)?.campaign_id === state.performanceCampaign) && (!state.performanceGroup || d.group_id === state.performanceGroup));
-    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); return total; }, {loaded:0,clicks:0});
+    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); total.candidate+=Number(m?.candidate || 0); total.excluded+=Number(m?.excluded || 0); total.unverified+=Number(m?.unverified || 0); return total; }, {loaded:0,clicks:0,candidate:0,excluded:0,unverified:0});
     const total = sums(visibleDrafts);
     $('performance-loaded').textContent = total.loaded.toLocaleString('ko-KR');
     $('performance-clicks').textContent = total.clicks.toLocaleString('ko-KR');
+    $('performance-candidate').textContent = total.candidate.toLocaleString('ko-KR');
+    $('performance-excluded').textContent = total.excluded.toLocaleString('ko-KR');
     $('performance-context').textContent = [state.performanceCampaign ? campaignNames.get(state.performanceCampaign) : '전체 캠페인', state.performanceGroup ? groups.get(state.performanceGroup)?.name : null].filter(Boolean).join('  ›  ');
     show('clear-performance-filter', !!state.performanceCampaign || !!state.performanceGroup);
     let rows;
@@ -222,7 +224,7 @@
     const table=document.createElement('table'); table.className='performance-table';
     const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
     const thead=document.createElement('thead'), header=document.createElement('tr');
-    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '목록 불러옴', '클릭', '화면 노출', '광고비', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
+    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '목록 불러옴', '전체 클릭', '유효 후보', '자동 제외', '미검증', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
     thead.append(header); table.append(thead);
     const body=document.createElement('tbody');
     for (const item of rows) {
@@ -237,7 +239,7 @@
       }
       const detail=document.createElement('small'); detail.textContent=item.detail; nameCell.append(label,detail); row.append(nameCell);
       const m=sums(item.drafts);
-      for (const value of [item.status || '—',m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),'—','—']) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
+      for (const value of [item.status || '—',m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),m.candidate.toLocaleString('ko-KR'),m.excluded.toLocaleString('ko-KR'),m.unverified.toLocaleString('ko-KR')]) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
       const action=document.createElement('td'), edit=document.createElement('button');
       edit.type='button'; edit.className='link'; edit.textContent='수정';
       const kind=state.performanceView, editId=item.editId || item.id;

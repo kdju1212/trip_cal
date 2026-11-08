@@ -54,6 +54,21 @@ void main() {
     expect(ads.single.price, 5000);
     service.close();
   });
+  test('클릭은 서버에서 중복 검증하도록 전송한다', () async {
+    var called = false;
+    final client = MockClient((request) async {
+      called = true;
+      expect(request.url.path, '/rest/v1/rpc/record_checked_click');
+      final body = jsonDecode(request.body) as Map<String, dynamic>;
+      expect(body['p_ad_id'], 42);
+      expect(body['p_installation_id'], 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      return http.Response('', 204);
+    });
+    final service = SimAdsService(client: client, url: 'https://example.supabase.co', anonKey: 'public-key');
+    await service.recordCheckedClick(42, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    expect(called, isTrue);
+    service.close();
+  });
   test('잘못된 링크는 거부하고 연결 정보가 없으면 요청하지 않는다', () async {
     final client = MockClient((request) async => http.Response('[{"merchant_name":"판매점","title":"유심","description":"","duration_days":3,"purchase_url":"http://unsafe.example"}]', 200, headers: {'content-type': 'application/json; charset=utf-8'}));
     final service = SimAdsService(client: client, url: 'https://example.supabase.co', anonKey: 'public-key');

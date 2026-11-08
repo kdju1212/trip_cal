@@ -242,12 +242,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: OutlinedButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: false, departure: widget.departure, endDate: widget.endDate))),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: false, storage: widget.app.store, departure: widget.departure, endDate: widget.endDate))),
                     child: const Text('유심 사러가기'),
                   )),
                   const SizedBox(width: 8),
                   Expanded(child: OutlinedButton(
-                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: true, departure: widget.departure, endDate: widget.endDate))),
+                    onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SimShoppingScreen(country: widget.country, isEsim: true, storage: widget.app.store, departure: widget.departure, endDate: widget.endDate))),
                     child: const Text('eSIM 사러가기'),
                   )),
                 ]),
