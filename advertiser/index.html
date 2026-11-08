@@ -2,12 +2,12 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>여행 준비 도우미 · 광고 등록</title>
+  <title>여행 준비 도우미 · 광고센터</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
-    <nav class="top-nav"><a class="active" href="index.html">광고주 센터</a><a id="admin-link" href="admin.html" hidden>관리자 센터</a></nav><header><span class="eyebrow">여행 준비 도우미</span><h1>유심·eSIM 광고 등록</h1><p>상품을 입력하고 앱에 보일 모습을 미리 확인하세요.</p></header>
+    <nav class="top-nav"><a class="active" href="index.html">광고주 센터</a><a id="admin-link" href="admin.html" hidden>관리자 센터</a></nav><header><span class="eyebrow">여행 준비 도우미</span><h1>광고센터</h1><p>광고 현황을 확인하고 새로운 소재를 등록하세요.</p></header>
     <section id="config-panel" class="panel" hidden>
       <h2>서버 연결</h2><p>운영자가 프로젝트의 공개 정보를 설정합니다.</p>
       <form id="config-form"><label>Supabase URL<input id="project-url" type="url" placeholder="https://프로젝트.supabase.co" required></label><label>공개용 키<input id="public-key" type="text" autocomplete="off" required></label><button type="submit">연결 정보 저장</button></form>
@@ -19,8 +19,20 @@
     </section>
     <div id="workspace" hidden>
       <div class="workspace-bar"><span id="account"></span><button id="logout" class="link" type="button">로그아웃</button></div>
+      <section id="dashboard-view">
+        <div class="dashboard-heading"><div><span class="eyebrow">내 광고</span><h2>광고 대시보드</h2><p>최근 등록한 광고의 검토 현황을 한눈에 확인하세요.</p></div><button id="open-create" type="button">＋ 소재 만들기</button></div>
+        <div class="stats-grid" aria-label="최근 광고 현황">
+          <div class="stat"><span>전체 요청</span><strong id="stat-total">—</strong></div>
+          <div class="stat"><span>검토 대기</span><strong id="stat-pending">—</strong></div>
+          <div class="stat"><span>승인</span><strong id="stat-approved">—</strong></div>
+          <div class="stat"><span>반려</span><strong id="stat-rejected">—</strong></div>
+        </div>
+        <section class="panel"><div class="dashboard-list-heading"><div><h2>최근 광고 요청</h2><p>최근 100개 요청 기준이에요.</p></div><button id="refresh-drafts" class="link" type="button">새로고침</button></div><div id="drafts" aria-live="polite"></div></section>
+      </section>
+      <div id="create-view" hidden>
+      <button id="back-dashboard" class="link back-link" type="button">‹ 대시보드로 돌아가기</button>
       <div class="grid">
-        <section class="panel"><h2>광고 내용</h2><p>등록한 내용은 관리자가 검토한 후 앱에 표시됩니다.</p>
+        <section class="panel"><h2>소재 만들기</h2><p>등록한 내용은 관리자가 검토한 후 앱에 표시됩니다.</p>
           <form id="ad-form">
             <label>업체명<input id="merchant" maxlength="80" required></label>
             <label>상품 이미지<input id="image" type="file" accept="image/jpeg,image/png,image/webp" required><small>JPG, PNG, WEBP · 최대 3MB</small></label>
@@ -33,7 +45,8 @@
           </form>
         </section>
         <aside><section class="panel preview-panel"><span class="eyebrow">미리보기</span><h2>앱에서 이렇게 보여요</h2><div class="preview"><div class="preview-photo"><img id="preview-image" alt="상품 이미지 미리보기" hidden><span id="image-placeholder">이미지</span></div><div class="preview-copy"><span class="badge">광고 · <span id="preview-merchant">업체명</span></span><strong id="preview-title">상품 제목</strong><p id="preview-description">3일 · 한 줄 설명</p><b id="preview-price"></b><small>가격과 조건은 판매처에서 확인 ›</small></div></div><p class="hint">국가와 유심 종류, 여행 일수가 맞는 여행자에게 표시됩니다.</p></section>
-          <section class="panel"><h2>내 검토 요청</h2><p>검수 결과를 확인하고, 수정이 필요하면 다시 등록해 주세요.</p><div id="drafts"></div></section></aside>
+        </aside>
+      </div>
       </div>
     </div>
     <p id="message" role="status" aria-live="polite"></p>

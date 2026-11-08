@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { url: '', key: '', session: null, admin: false, previewUrl: null };
+  const state = { url: '', key: '', session: null, admin: false, previewUrl: null, view: 'dashboard' };
   const demo = new URLSearchParams(location.search).get('preview') === '1';
   const message = text => { $('message').textContent = text; };
   const show = (id, visible) => { $(id).hidden = !visible; };
@@ -41,12 +41,15 @@
       $('account').textContent = '미리보기 전용';
       $('submit-ad').disabled = true;
       $('drafts').textContent = '미리보기에서는 광고가 등록되지 않아요.';
+      show('dashboard-view', state.view === 'dashboard'); show('create-view', state.view === 'create');
       return;
     }
     show('admin-link', !!state.session && state.admin);
     show('config-panel', !configValid(state.url, state.key));
     show('auth-panel', configValid(state.url, state.key) && !state.session);
     show('workspace', !!state.session);
+    show('dashboard-view', !!state.session && state.view === 'dashboard');
+    show('create-view', !!state.session && state.view === 'create');
     if (state.session) $('account').textContent = state.session.user.email || '광고 계정';
   }
   $('config-form').addEventListener('submit', event => {
@@ -105,7 +108,7 @@
       renderAuth();
       await Promise.all([checkAdmin(), loadDrafts()]);
     } catch (_) {
-      state.session = null; state.admin = false; window.TripSession.clear(); renderAuth();
+      state.session = null; state.admin = false; state.view = 'dashboard'; window.TripSession.clear(); renderAuth();
       message('로그인 상태를 확인하지 못했어요. 다시 로그인해 주세요.');
     }
   }
@@ -125,8 +128,20 @@
   $('logout').addEventListener('click', async () => {
     const token = state.session?.access_token;
     try { if (token) await request('/auth/v1/logout', {method: 'POST', headers: headers(true)}); } catch (_) { /* local logout still completes */ }
-    state.session = null; state.admin = false; window.TripSession.clear(); $('ad-form').reset(); updatePreview(); renderAuth(); message('로그아웃했어요.');
+    state.session = null; state.admin = false; state.view = 'dashboard'; window.TripSession.clear(); $('ad-form').reset();
+    if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true);
+    updatePreview(); renderAuth(); message('로그아웃했어요.');
   });
+  function setView(view) {
+    if (!state.session && !demo) return;
+    state.view = view;
+    renderAuth();
+    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+  }
+  $('open-create').addEventListener('click', () => setView('create'));
+  $('back-dashboard').addEventListener('click', () => setView('dashboard'));
+  $('refresh-drafts').addEventListener('click', () => { if (state.session) loadDrafts(); });
   function updatePreview() {
     $('preview-merchant').textContent = $('merchant').value.trim() || '업체명';
     $('preview-title').textContent = $('title').value.trim() || '상품 제목';
@@ -143,17 +158,38 @@
     show('preview-image', !!file); show('image-placeholder', !file);
   });
   async function loadDrafts() {
-    const list = $('drafts'); list.replaceChildren();
+    const list = $('drafts');
+    list.className = ''; list.textContent = '광고 현황을 불러오고 있어요.';
+    for (const id of ['stat-total', 'stat-pending', 'stat-approved', 'stat-rejected']) $(id).textContent = '—';
     try {
-      const drafts = await request(`/rest/v1/advertiser_drafts?select=id,title,created_at,review_status,review_note&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)});
-      if (!drafts.length) { list.textContent = '아직 등록한 광고가 없어요.'; return; }
-      for (const draft of drafts) {
-        const item = document.createElement('div'); item.className = 'draft';
-        const title = document.createElement('strong'); title.textContent = draft.title;
-        const note = document.createElement('small'); note.textContent = ({pending:'검토 대기', approved:'승인됨', rejected:'반려됨'})[draft.review_status] || '상태 확인 중'; if (draft.review_status === 'rejected' && draft.review_note) note.textContent += ` · ${draft.review_note}`;
-        item.append(title, note); list.append(item);
+      const drafts = await request(`/rest/v1/advertiser_drafts?select=id,title,created_at,sim_type,country_code,duration_days,review_status,review_note&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc&limit=100`, {headers: headers(true)});
+      if (!Array.isArray(drafts)) throw new Error('Invalid response');
+      $('stat-total').textContent = String(drafts.length);
+      $('stat-pending').textContent = String(drafts.filter(d => d.review_status === 'pending').length);
+      $('stat-approved').textContent = String(drafts.filter(d => d.review_status === 'approved').length);
+      $('stat-rejected').textContent = String(drafts.filter(d => d.review_status === 'rejected').length);
+      list.replaceChildren();
+      if (!drafts.length) {
+        const empty = document.createElement('div'); empty.className = 'empty-dashboard';
+        const title = document.createElement('strong'); title.textContent = '아직 등록한 광고가 없어요';
+        const detail = document.createElement('p'); detail.textContent = '소재를 만들면 이곳에서 검토 상태를 확인할 수 있어요.';
+        empty.append(title, detail); list.append(empty); return;
       }
-    } catch (_) { list.textContent = '등록 내역을 불러오지 못했어요.'; }
+      for (const draft of drafts) {
+        const row = document.createElement('div'); row.className = 'draft-row';
+        const content = document.createElement('div'); content.className = 'draft-content';
+        const title = document.createElement('strong'); title.textContent = draft.title;
+        const detail = document.createElement('small');
+        detail.textContent = [draft.country_code, draft.sim_type === 'esim' ? 'eSIM' : '유심', draft.duration_days == null ? '' : `${draft.duration_days}일`].filter(Boolean).join(' · ');
+        content.append(title, detail);
+        if (draft.review_status === 'rejected' && draft.review_note) {
+          const note = document.createElement('small'); note.textContent = `반려 사유: ${draft.review_note}`; content.append(note);
+        }
+        const status = document.createElement('span'); status.className = `status ${['approved','rejected'].includes(draft.review_status) ? draft.review_status : ''}`;
+        status.textContent = ({pending:'검토 대기', approved:'승인', rejected:'반려'})[draft.review_status] || '상태 확인 중';
+        row.append(content, status); list.append(row);
+      }
+    } catch (_) { list.replaceChildren(); list.textContent = '광고 현황을 불러오지 못했어요. 새로고침을 눌러 주세요.'; list.className = 'dashboard-error'; }
   }
   $('ad-form').addEventListener('submit', async event => {
     event.preventDefault();
@@ -179,7 +215,7 @@
       $('ad-form').reset();
       if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
       state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true); updatePreview();
-      message('검토 요청을 보냈어요. 관리자 확인 후 앱에 표시됩니다.'); await loadDrafts();
+      setView('dashboard'); message('검토 요청을 보냈어요. 관리자 확인 후 앱에 표시됩니다.'); await loadDrafts();
     } catch (_) {
       message('등록 결과를 확인하지 못했어요. 중복 등록을 피하려면 내 검토 요청을 먼저 확인해 주세요.');
       await loadDrafts();

@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '../advertiser');
 const source = name => fs.readFileSync(path.join(root, name), 'utf8');
 const wait = () => new Promise(resolve => setTimeout(resolve, 10));
 
-function browser(storage, role, loginError = false) {
+function browser(storage, role, loginError = false, fixtures = []) {
   const elements = new Map();
   const responses = [];
   function el(id) {
@@ -37,7 +37,7 @@ function browser(storage, role, loginError = false) {
       else if (u.pathname==='/auth/v1/resend') body = {};
       else if(u.pathname==='/auth/v1/user') body = {id:'user-1',email:'test@example.com'};
       else if(u.pathname==='/rest/v1/rpc/is_ad_admin') body = role;
-      else if(u.pathname==='/rest/v1/advertiser_drafts') body = [];
+      else if(u.pathname==='/rest/v1/advertiser_drafts') body = fixtures;
       else if(u.pathname==='/rest/v1/sim_ads') body = [];
       else if(u.pathname==='/auth/v1/logout') body = {};
       else throw new Error('Unexpected request '+u.pathname);
@@ -57,6 +57,8 @@ test('한 번 로그인한 관리자는 관리자 화면으로 이동하고 로�
   await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
   assert.equal(login.el('admin-link').hidden,false);
   assert.equal(login.el('workspace').hidden,false);
+  assert.equal(login.el('dashboard-view').hidden,false);
+  assert.equal(login.el('create-view').hidden,true);
   assert.ok(login.responses.some(x=>x.search.includes('owner_id=eq.user-1')));
   assert.ok(![...storage.values()][0].includes('never-store'));
   const admin = browser(storage,true);
@@ -68,6 +70,31 @@ test('한 번 로그인한 관리자는 관리자 화면으로 이동하고 로�
   await admin.el('admin-logout').listeners.click();
   assert.equal(storage.size,0);
   assert.ok(admin.responses.some(x=>x.navigation==='index.html'));
+});
+
+test('광고주는 로그인 후 대시보드를 보고 소재 작성 화면으로 이동한다', async () => {
+  const storage = new Map();
+  const fixtures = [
+    {id:'1',title:'유심 3일',country_code:'JP',sim_type:'sim',duration_days:3,review_status:'pending'},
+    {id:'2',title:'이심 3일',country_code:'JP',sim_type:'esim',duration_days:3,review_status:'approved'},
+    {id:'3',title:'수정 필요',country_code:'JP',sim_type:'sim',duration_days:3,review_status:'rejected',review_note:'내용 확인'},
+  ];
+  const b = browser(storage,false,false,fixtures);
+  vm.runInContext(source('app.js'),b.context);
+  b.el('email').value='test@example.com'; b.el('password').value='password123';
+  await b.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  assert.equal(b.el('dashboard-view').hidden,false);
+  assert.equal(b.el('create-view').hidden,true);
+  assert.equal(b.el('stat-total').textContent,'3');
+  assert.equal(b.el('stat-pending').textContent,'1');
+  assert.equal(b.el('stat-approved').textContent,'1');
+  assert.equal(b.el('stat-rejected').textContent,'1');
+  b.el('open-create').listeners.click();
+  assert.equal(b.el('dashboard-view').hidden,true);
+  assert.equal(b.el('create-view').hidden,false);
+  b.el('back-dashboard').listeners.click();
+  assert.equal(b.el('dashboard-view').hidden,false);
+  assert.equal(b.el('create-view').hidden,true);
 });
 
 test('일반 광고주는 관리자 메뉴를 볼 수 없고 직접 열어도 거절된다', async () => {
