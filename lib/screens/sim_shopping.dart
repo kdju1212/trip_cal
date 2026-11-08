@@ -83,7 +83,7 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
                   for (final ad in products) Card(
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      onTap: () { if (ad.id != null) unawaited(ads.recordEvents([ad.id!], 'click')); openExternal(context, ad.purchaseUrl); },
+                      onTap: () { if (ad.id != null) { unawaited(ads.recordEvents([ad.id!], 'click')); } openExternal(context, ad.purchaseUrl); },
                       child: Padding(padding: const EdgeInsets.all(16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         ClipRRect(borderRadius: BorderRadius.circular(12), child: ad.imageUrl == null
                           ? Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined))

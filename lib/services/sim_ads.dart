@@ -59,7 +59,7 @@ class SimAdsService {
   }
   /// Best-effort anonymous activity measurement; this is not verified billing data.
   Future<void> recordEvents(List<int> ids, String event) async {
-    if (!configured || ids.isEmpty || !['loaded', 'click'].contains(event)) return;
+    if (!configured || ids.isEmpty || !['loaded', 'click'].contains(event)) { return; }
     final root = Uri.parse(url);
     final uri = root.replace(path: '${root.path.replaceFirst(RegExp(r'/$'), '')}/rest/v1/rpc/record_ad_events');
     try {
