@@ -20,20 +20,36 @@
     <div id="workspace" hidden>
       <div class="workspace-bar"><span id="account"></span><button id="logout" class="link" type="button">로그아웃</button></div>
       <section id="dashboard-view">
-        <div class="dashboard-heading"><div><span class="eyebrow">내 광고</span><h2>광고 대시보드</h2><p>최근 등록한 광고의 검토 현황을 한눈에 확인하세요.</p></div><button id="open-create" type="button">＋ 소재 만들기</button></div>
+        <div class="dashboard-heading"><div><span class="eyebrow">내 광고</span><h2>광고 대시보드</h2><p>최근 등록한 광고의 검토 현황을 한눈에 확인하세요.</p></div><button id="open-create" type="button">＋ 광고 만들기</button></div>
         <div class="stats-grid" aria-label="최근 광고 현황">
           <div class="stat"><span>전체 요청</span><strong id="stat-total">—</strong></div>
           <div class="stat"><span>검토 대기</span><strong id="stat-pending">—</strong></div>
           <div class="stat"><span>승인</span><strong id="stat-approved">—</strong></div>
           <div class="stat"><span>반려</span><strong id="stat-rejected">—</strong></div>
         </div>
+        <section class="panel performance-panel">
+          <div class="dashboard-list-heading"><div><h2>광고 성과</h2><p>전체 기간 · 앱에서 기록된 활동 기준</p></div><button id="refresh-performance" class="link" type="button">새로고침</button></div>
+          <div class="performance-tabs" role="group" aria-label="성과 구분"><button type="button" class="secondary active" data-performance="campaign">캠페인</button><button type="button" class="secondary" data-performance="group">광고그룹</button><button type="button" class="secondary" data-performance="creative">소재</button></div>
+          <p class="hint">목록 불러옴은 광고 목록에 포함된 횟수이며, 실제 화면 노출 횟수와 달라요. 클릭은 광고 상품을 누른 횟수예요. 기존 앱에서는 기록되지 않으며 광고비 청구용 수치가 아니에요.</p>
+          <div id="performance-list" aria-live="polite">성과를 불러오고 있어요.</div>
+        </section>
         <section class="panel"><div class="dashboard-list-heading"><div><h2>최근 광고 요청</h2><p>최근 100개 요청 기준이에요.</p></div><button id="refresh-drafts" class="link" type="button">새로고침</button></div><div id="drafts" aria-live="polite"></div></section>
       </section>
       <div id="create-view" hidden>
       <button id="back-dashboard" class="link back-link" type="button">‹ 대시보드로 돌아가기</button>
       <div class="grid">
-        <section class="panel"><h2>소재 만들기</h2><p>등록한 내용은 관리자가 검토한 후 앱에 표시됩니다.</p>
+        <section class="panel"><h2>광고 만들기</h2><p>캠페인 → 광고그룹 → 소재 순서로 입력해 주세요.</p>
           <form id="ad-form">
+            <h3>1. 캠페인</h3>
+            <label>캠페인 선택<select id="campaign-select"><option value="">새 캠페인 만들기</option></select></label>
+            <div id="new-campaign"><label>캠페인 이름<input id="campaign-name" maxlength="80" placeholder="예: 일본 여행 캠페인"></label><label>일 예산 (원, 선택)<input id="campaign-budget" type="number" min="0" max="2147483647" placeholder="예: 10000"></label></div>
+            <small>예산은 참고용으로 저장되며 자동 지출 제한은 아직 적용되지 않아요.</small>
+            <h3>2. 광고그룹</h3>
+            <label>광고그룹 선택<select id="group-select"><option value="">새 광고그룹 만들기</option></select></label>
+            <div id="new-group"><label>광고그룹 이름<input id="group-name" maxlength="80" placeholder="예: 일본 eSIM 3일"></label><label>클릭당 입찰가 (원)<input id="group-bid" type="number" min="0" max="2147483647" placeholder="예: 100"></label></div>
+            <small>입찰가는 설정값으로 저장돼요. 자동 순위 결정과 클릭 과금은 아직 적용되지 않아요.</small>
+            <h3>3. 소재</h3>
+            <p>등록한 소재는 관리자가 검토한 후 앱에 표시됩니다.</p>
             <label>업체명<input id="merchant" maxlength="80" required></label>
             <label>상품 이미지<input id="image" type="file" accept="image/jpeg,image/png,image/webp" required><small>JPG, PNG, WEBP · 최대 3MB</small></label>
             <label>제목<input id="title" maxlength="60" required placeholder="예: 일본 eSIM 3일"></label>

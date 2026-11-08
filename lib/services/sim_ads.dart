@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class SimAd {
-  const SimAd({required this.merchant, required this.title, required this.description, required this.duration, required this.purchaseUrl, this.price, this.imageUrl});
+  const SimAd({required this.merchant, required this.title, required this.description, required this.duration, required this.purchaseUrl, this.price, this.imageUrl, this.id});
   final String merchant, title, description, purchaseUrl;
   final int duration;
   final int? price;
+  final int? id;
   final String? imageUrl;
 
   static bool _secureUrl(String? value) {
@@ -23,7 +24,7 @@ class SimAd {
     final price = raw['price_krw'];
     final image = raw['image_url'];
     if (merchant is! String || merchant.trim().isEmpty || title is! String || title.trim().isEmpty || description is! String || duration is! int || duration < 1 || purchaseUrl is! String || !_secureUrl(purchaseUrl) || (price != null && (price is! int || price < 0))) { return null; }
-    return SimAd(merchant: merchant, title: title, description: description, duration: duration, purchaseUrl: purchaseUrl, price: price as int?, imageUrl: image is String && _secureUrl(image) ? image : null);
+    return SimAd(merchant: merchant, title: title, description: description, duration: duration, purchaseUrl: purchaseUrl, price: price as int?, imageUrl: image is String && _secureUrl(image) ? image : null, id: raw['id'] is int ? raw['id'] as int : null);
   }
 }
 
@@ -55,6 +56,19 @@ class SimAdsService {
     final json = jsonDecode(response.body);
     if (json is! List) { throw const FormatException('광고 상품 응답을 확인해 주세요.'); }
     return json.map(SimAd.fromJson).whereType<SimAd>().toList();
+  }
+  /// Best-effort anonymous activity measurement; this is not verified billing data.
+  Future<void> recordEvents(List<int> ids, String event) async {
+    if (!configured || ids.isEmpty || !['loaded', 'click'].contains(event)) return;
+    final root = Uri.parse(url);
+    final uri = root.replace(path: '${root.path.replaceFirst(RegExp(r'/$'), '')}/rest/v1/rpc/record_ad_events');
+    try {
+      await client.post(uri, headers: {
+        'apikey': anonKey,
+        if (!anonKey.startsWith('sb_publishable_')) 'Authorization': 'Bearer $anonKey',
+        'Content-Type': 'application/json',
+      }, body: jsonEncode({'p_ids': ids.take(50).toList(), 'p_event': event})).timeout(const Duration(seconds: 5));
+    } catch (_) { /* Statistics must not interrupt shopping. */ }
   }
   void close() => client.close();
 }

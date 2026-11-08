@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { url: '', key: '', session: null, admin: false, previewUrl: null, view: 'dashboard' };
+  const state = { url: '', key: '', session: null, admin: false, previewUrl: null, view: 'dashboard', campaigns: [], groups: [], performance: null, performanceView: 'campaign' };
   const demo = new URLSearchParams(location.search).get('preview') === '1';
   const message = text => { $('message').textContent = text; };
   const show = (id, visible) => { $(id).hidden = !visible; };
@@ -74,7 +74,7 @@
       const stored = window.TripSession.save(result, state.url);
       state.admin = false;
       renderAuth(); message('');
-      await Promise.all([checkAdmin(), loadDrafts()]);
+      await Promise.all([checkAdmin(), loadDrafts(), loadPerformance()]);
       if (!stored) message('브라우저에서 로그인 상태를 저장할 수 없어 화면 이동이 제한될 수 있어요.');
     } catch (error) {
       if (error.code === 'email_not_confirmed') {
@@ -106,7 +106,7 @@
       state.session.user = user;
       window.TripSession.save(state.session, state.url);
       renderAuth();
-      await Promise.all([checkAdmin(), loadDrafts()]);
+      await Promise.all([checkAdmin(), loadDrafts(), loadPerformance()]);
     } catch (_) {
       state.session = null; state.admin = false; state.view = 'dashboard'; window.TripSession.clear(); renderAuth();
       message('로그인 상태를 확인하지 못했어요. 다시 로그인해 주세요.');
@@ -128,7 +128,7 @@
   $('logout').addEventListener('click', async () => {
     const token = state.session?.access_token;
     try { if (token) await request('/auth/v1/logout', {method: 'POST', headers: headers(true)}); } catch (_) { /* local logout still completes */ }
-    state.session = null; state.admin = false; state.view = 'dashboard'; window.TripSession.clear(); $('ad-form').reset();
+    state.session = null; state.admin = false; state.view = 'dashboard'; state.campaigns = []; state.groups = []; state.performance = null; window.TripSession.clear(); $('ad-form').reset();
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true);
     updatePreview(); renderAuth(); message('로그아웃했어요.');
@@ -139,9 +139,89 @@
     renderAuth();
     if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
   }
-  $('open-create').addEventListener('click', () => setView('create'));
+  $('open-create').addEventListener('click', async () => { setView('create'); if (state.session) await loadHierarchy(); });
   $('back-dashboard').addEventListener('click', () => setView('dashboard'));
   $('refresh-drafts').addEventListener('click', () => { if (state.session) loadDrafts(); });
+  function fillOptions(id, items, placeholder) {
+    const select = $(id), previous = select.value;
+    select.replaceChildren();
+    const first = document.createElement('option'); first.value = ''; first.textContent = placeholder; select.append(first);
+    for (const item of items) { const option = document.createElement('option'); option.value = item.id; option.textContent = item.name; select.append(option); }
+    if (items.some(item => item.id === previous)) select.value = previous;
+  }
+  function updateGroupSelection() {
+    const group = state.groups.find(g => g.id === $('group-select').value);
+    show('new-group', !group);
+    for (const id of ['sim-type', 'country', 'duration']) $(id).disabled = !!group;
+    if (group) { $('sim-type').value = group.sim_type; $('country').value = group.country_code; $('duration').value = group.duration_days; }
+    updatePreview();
+  }
+  function updateCampaignSelection() {
+    const campaign = $('campaign-select').value;
+    show('new-campaign', !campaign);
+    fillOptions('group-select', state.groups.filter(g => g.campaign_id === campaign), '새 광고그룹 만들기');
+    updateGroupSelection();
+  }
+  $('campaign-select').addEventListener('change', updateCampaignSelection);
+  $('group-select').addEventListener('change', updateGroupSelection);
+  async function loadHierarchy() {
+    try {
+      const [campaigns, groups] = await Promise.all([
+        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)}),
+        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)})
+      ]);
+      state.campaigns = campaigns; state.groups = groups;
+      fillOptions('campaign-select', campaigns, '새 캠페인 만들기'); updateCampaignSelection();
+    } catch (_) { message('캠페인 정보를 불러오지 못했어요. 다시 시도해 주세요.'); }
+  }
+  async function createRecord(table, payload) {
+    const records = await request('/rest/v1/' + table, {method:'POST', headers:{...headers(true), 'Content-Type':'application/json', Prefer:'return=representation'}, body:JSON.stringify(payload)});
+    if (!Array.isArray(records) || !records[0]?.id) throw new Error('저장 결과를 확인하지 못했어요.');
+    return records[0];
+  }
+  async function loadPerformance() {
+    if (!state.session) return;
+    const list = $('performance-list'); list.textContent = '성과를 불러오고 있어요.';
+    const owner = encodeURIComponent(state.session.user.id);
+    try {
+      const [campaigns, groups, drafts, metrics] = await Promise.all([
+        request(`/rest/v1/ad_campaigns?select=id,name&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/ad_groups?select=id,campaign_id,name&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/advertiser_drafts?select=id,group_id,title,review_status&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request('/rest/v1/rpc/my_ad_performance', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'})
+      ]);
+      if (![campaigns, groups, drafts, metrics].every(Array.isArray)) throw new Error('Invalid response');
+      state.performance = {campaigns, groups, drafts, metrics}; renderPerformance();
+    } catch (_) { state.performance = null; list.textContent = '성과를 불러오지 못했어요. 새로고침을 눌러 주세요.'; }
+  }
+  function renderPerformance() {
+    const list = $('performance-list'), data = state.performance;
+    if (!data) return;
+    list.replaceChildren();
+    const metrics = new Map(data.metrics.map(m => [m.draft_id, m]));
+    const groups = new Map(data.groups.map(g => [g.id,g]));
+    const campaignNames = new Map(data.campaigns.map(c => [c.id,c.name]));
+    let rows;
+    if (state.performanceView === 'creative') rows = data.drafts.map(d => ({name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', drafts:[d]}));
+    else if (state.performanceView === 'group') rows = data.groups.map(g => ({name:g.name, detail:campaignNames.get(g.campaign_id) || '', drafts:data.drafts.filter(d => d.group_id === g.id)}));
+    else rows = data.campaigns.map(c => ({name:c.name, detail:'캠페인 전체 합계', drafts:data.drafts.filter(d => groups.get(d.group_id)?.campaign_id === c.id)}));
+    if (!rows.length) { list.textContent = '아직 등록된 항목이 없어요.'; return; }
+    for (const item of rows) {
+      let loaded = 0, clicks = 0;
+      for (const draft of item.drafts) { const m = metrics.get(draft.id); loaded += Number(m?.loaded || 0); clicks += Number(m?.clicks || 0); }
+      const row = document.createElement('div'); row.className = 'performance-row';
+      const label = document.createElement('div'), title = document.createElement('strong'), detail = document.createElement('small');
+      title.textContent = item.name; detail.textContent = item.detail; label.append(title,detail);
+      const values = document.createElement('div'); values.className = 'performance-values'; values.textContent = `목록 불러옴 ${loaded.toLocaleString('ko-KR')} · 클릭 ${clicks.toLocaleString('ko-KR')}`;
+      row.append(label,values); list.append(row);
+    }
+  }
+  document.querySelectorAll('[data-performance]').forEach(button => button.addEventListener('click', () => {
+    state.performanceView = button.dataset.performance;
+    document.querySelectorAll('[data-performance]').forEach(b => b.classList.toggle('active', b === button));
+    renderPerformance();
+  }));
+  $('refresh-performance').addEventListener('click', loadPerformance);
   function updatePreview() {
     $('preview-merchant').textContent = $('merchant').value.trim() || '업체명';
     $('preview-title').textContent = $('title').value.trim() || '상품 제목';
@@ -194,6 +274,8 @@
   $('ad-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (!state.session) return;
+    if (!$('campaign-select').value && !$('campaign-name').value.trim()) { message('캠페인 이름을 입력해 주세요.'); return; }
+    if (!$('group-select').value && (!$('group-name').value.trim() || $('group-bid').value === '')) { message('광고그룹 이름과 클릭당 입찰가를 입력해 주세요.'); return; }
     const file = $('image').files[0];
     const purchase = $('purchase').value.trim();
     if (!file || !['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 3145728) { message('이미지는 3MB 이하의 JPG, PNG, WEBP 파일로 선택해 주세요.'); return; }
@@ -204,18 +286,28 @@
     const objectPath = `${state.session.user.id}/${crypto.randomUUID()}.${extension}`;
     $('submit-ad').disabled = true; message('광고를 등록하고 있어요.');
     try {
+      let campaign = state.campaigns.find(c => c.id === $('campaign-select').value);
+      if (!campaign) {
+        campaign = await createRecord('ad_campaigns', {name:$('campaign-name').value.trim(), daily_budget_krw:$('campaign-budget').value === '' ? null : Number($('campaign-budget').value)});
+        state.campaigns.unshift(campaign); fillOptions('campaign-select', state.campaigns, '새 캠페인 만들기'); $('campaign-select').value = campaign.id; updateCampaignSelection();
+      }
+      let group = state.groups.find(g => g.id === $('group-select').value);
+      if (!group) {
+        group = await createRecord('ad_groups', {campaign_id:campaign.id, name:$('group-name').value.trim(), sim_type:$('sim-type').value, country_code:$('country').value, duration_days:Number($('duration').value), cpc_bid_krw:Number($('group-bid').value)});
+        state.groups.unshift(group); updateCampaignSelection(); $('group-select').value = group.id; updateGroupSelection();
+      }
       await request(`/storage/v1/object/ad-draft-images/${objectPath}`, {method: 'POST', headers: {...headers(true), 'Content-Type': file.type, 'x-upsert': 'false'}, body: file});
       const body = {
-        merchant_name: $('merchant').value.trim(), title: $('title').value.trim(), description,
+        group_id: group.id, merchant_name: $('merchant').value.trim(), title: $('title').value.trim(), description,
         sim_type: $('sim-type').value, country_code: $('country').value,
         duration_days: Number($('duration').value), price_krw: $('price').value === '' ? null : Number($('price').value),
         image_path: objectPath, purchase_url: purchase,
       };
       await request('/rest/v1/advertiser_drafts', {method: 'POST', headers: {...headers(true), 'Content-Type': 'application/json', Prefer: 'return=minimal'}, body: JSON.stringify(body)});
-      $('ad-form').reset();
+      $('ad-form').reset(); updateCampaignSelection();
       if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
       state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true); updatePreview();
-      setView('dashboard'); message('검토 요청을 보냈어요. 관리자 확인 후 앱에 표시됩니다.'); await loadDrafts();
+      setView('dashboard'); message('검토 요청을 보냈어요. 관리자 확인 후 앱에 표시됩니다.'); await Promise.all([loadDrafts(), loadPerformance()]);
     } catch (_) {
       message('등록 결과를 확인하지 못했어요. 중복 등록을 피하려면 내 검토 요청을 먼저 확인해 주세요.');
       await loadDrafts();

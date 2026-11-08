@@ -2,7 +2,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const config = window.ADVERTISER_CONFIG || {};
-  const state = {session: null, drafts: [], ads: [], filter: 'pending', busy: false, signed: new Map()};
+  const state = {session: null, drafts: [], ads: [], filter: 'pending', busy: false, signed: new Map(), groups: [], campaigns: []};
   const msg = value => { $('admin-message').textContent = value; };
   const headers = () => ({apikey: config.key, Authorization: `Bearer ${state.session.access_token}`});
   const node = (tag, text, className) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (className) e.className = className; return e; };
@@ -64,11 +64,13 @@
     if (!state.session) return;
     $('review-list').replaceChildren(node('p','불러오는 중이에요.','empty'));
     try {
-      const [drafts, ads] = await Promise.all([
-        api('/rest/v1/advertiser_drafts?select=id,merchant_name,title,description,sim_type,country_code,duration_days,price_krw,image_path,purchase_url,created_at,review_status,review_note,published_ad_id&order=created_at.desc&limit=200', {headers:headers()}),
+      const [drafts, ads, groups, campaigns] = await Promise.all([
+        api('/rest/v1/advertiser_drafts?select=id,group_id,merchant_name,title,description,sim_type,country_code,duration_days,price_krw,image_path,purchase_url,created_at,review_status,review_note,published_ad_id&order=created_at.desc&limit=200', {headers:headers()}),
         api('/rest/v1/sim_ads?select=id,is_active&limit=1000', {headers:headers()}),
+        api('/rest/v1/ad_groups?select=id,campaign_id,name,cpc_bid_krw&limit=1000', {headers:headers()}),
+        api('/rest/v1/ad_campaigns?select=id,name&limit=1000', {headers:headers()}),
       ]);
-      state.drafts = drafts; state.ads = ads;
+      state.drafts = drafts; state.ads = ads; state.groups = groups; state.campaigns = campaigns;
       $('pending-count').textContent = drafts.filter(d => d.review_status === 'pending').length;
       $('approved-count').textContent = drafts.filter(d => d.review_status === 'approved').length;
       render();
@@ -103,6 +105,11 @@
       body.append(image,info);
       const meta=node('div',null,'review-meta'); for(const value of [draft.country_code, draft.sim_type === 'esim' ? 'eSIM' : '유심', `${draft.duration_days}일`]) meta.append(node('span',value));
       card.append(head,body,meta);
+      const group=state.groups.find(g => g.id === draft.group_id);
+      if (group) {
+        const campaign=state.campaigns.find(c => c.id === group.campaign_id);
+        card.append(node('p',`캠페인: ${campaign?.name || '확인 불가'} · 광고그룹: ${group.name} · 설정 입찰가: ${Number(group.cpc_bid_krw).toLocaleString('ko-KR')}원 (자동 순위 미적용)`,'status-note'));
+      }
       if (secureUrl(draft.purchase_url)) { const link=node('a','판매처 링크 확인 ↗'); link.href=draft.purchase_url; link.target='_blank'; link.rel='noopener noreferrer'; card.append(link); }
       if (draft.review_note) card.append(node('p',`검수 의견: ${draft.review_note}`,'status-note'));
       const actions=node('div',null,'review-actions');

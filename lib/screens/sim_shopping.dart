@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../domain.dart';
 import '../widgets/common.dart';
@@ -19,7 +20,11 @@ class SimShoppingScreen extends StatefulWidget {
 class _SimShoppingScreenState extends State<SimShoppingScreen> {
   late final SimAdsService ads = widget.adsService ?? SimAdsService();
   late Future<List<SimAd>> listings = loadAds();
-  Future<List<SimAd>> loadAds() => ads.fetch(countryCode: widget.country?.code ?? '', isEsim: widget.isEsim, days: tripCalendarDays(widget.departure, widget.endDate));
+  Future<List<SimAd>> loadAds() async {
+    final products = await ads.fetch(countryCode: widget.country?.code ?? '', isEsim: widget.isEsim, days: tripCalendarDays(widget.departure, widget.endDate));
+    unawaited(ads.recordEvents(products.map((ad) => ad.id).whereType<int>().toList(), 'loaded'));
+    return products;
+  }
 
   @override
   void dispose() {
@@ -78,7 +83,7 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
                   for (final ad in products) Card(
                     clipBehavior: Clip.antiAlias,
                     child: InkWell(
-                      onTap: () => openExternal(context, ad.purchaseUrl),
+                      onTap: () { if (ad.id != null) unawaited(ads.recordEvents([ad.id!], 'click')); openExternal(context, ad.purchaseUrl); },
                       child: Padding(padding: const EdgeInsets.all(16), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         ClipRRect(borderRadius: BorderRadius.circular(12), child: ad.imageUrl == null
                           ? Container(width: 80, height: 80, color: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.sim_card_outlined))
