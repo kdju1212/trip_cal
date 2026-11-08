@@ -167,8 +167,8 @@
   async function loadHierarchy() {
     try {
       const [campaigns, groups] = await Promise.all([
-        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)}),
-        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)})
+        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)}),
+        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)})
       ]);
       state.campaigns = campaigns; state.groups = groups;
       fillOptions('campaign-select', campaigns, '새 캠페인 만들기'); updateCampaignSelection();
@@ -186,15 +186,16 @@
     $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—'; $('performance-candidate').textContent = '—'; $('performance-excluded').textContent = '—';
     const owner = encodeURIComponent(state.session.user.id);
     try {
-      const [campaigns, groups, drafts, metrics] = await Promise.all([
-        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request('/rest/v1/rpc/my_ad_performance_breakdown', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})})
+      const [campaigns, groups, drafts, metrics, delivery] = await Promise.all([
+        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
+        request('/rest/v1/rpc/my_ad_performance_breakdown', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
+        request('/rest/v1/rpc/my_ad_delivery', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'})
       ]);
       if (requestId !== state.performanceRequest || !state.session) return;
-      if (![campaigns, groups, drafts, metrics].every(Array.isArray)) throw new Error('Invalid response');
-      state.performance = {campaigns, groups, drafts, metrics}; renderPerformance();
+      if (![campaigns, groups, drafts, metrics, delivery].every(Array.isArray)) throw new Error('Invalid response');
+      state.performance = {campaigns, groups, drafts, metrics, delivery}; renderPerformance();
     } catch (_) {
       if (requestId !== state.performanceRequest) return;
       state.performance = null; list.textContent = '성과를 불러오지 못했어요. 새로고침을 눌러 주세요.';
@@ -207,6 +208,8 @@
     const metrics = new Map(data.metrics.map(m => [m.draft_id, m]));
     const groups = new Map(data.groups.map(g => [g.id,g]));
     const campaignNames = new Map(data.campaigns.map(c => [c.id,c.name]));
+    const campaigns = new Map(data.campaigns.map(c => [c.id,c]));
+    const delivery = new Map(data.delivery.map(d => [d.draft_id,d.admin_active]));
     const visibleDrafts = data.drafts.filter(d => (!state.performanceCampaign || groups.get(d.group_id)?.campaign_id === state.performanceCampaign) && (!state.performanceGroup || d.group_id === state.performanceGroup));
     const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); total.candidate+=Number(m?.candidate || 0); total.excluded+=Number(m?.excluded || 0); total.unverified+=Number(m?.unverified || 0); return total; }, {loaded:0,clicks:0,candidate:0,excluded:0,unverified:0});
     const total = sums(visibleDrafts);
@@ -217,9 +220,9 @@
     $('performance-context').textContent = [state.performanceCampaign ? campaignNames.get(state.performanceCampaign) : '전체 캠페인', state.performanceGroup ? groups.get(state.performanceGroup)?.name : null].filter(Boolean).join('  ›  ');
     show('clear-performance-filter', !!state.performanceCampaign || !!state.performanceGroup);
     let rows;
-    if (state.performanceView === 'creative') rows = visibleDrafts.map(d => ({editId:d.id, name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', status:({pending:'검토 대기',approved:'승인',rejected:'반려'})[d.review_status] || '확인 중', drafts:[d]}));
-    else if (state.performanceView === 'group') rows = data.groups.filter(g => !state.performanceCampaign || g.campaign_id === state.performanceCampaign).map(g => ({id:g.id, name:g.name, detail:campaignNames.get(g.campaign_id) || '', drafts:visibleDrafts.filter(d => d.group_id === g.id)}));
-    else rows = data.campaigns.filter(c => !state.performanceCampaign || c.id === state.performanceCampaign).map(c => ({id:c.id, name:c.name, detail:'광고그룹 보기', drafts:visibleDrafts.filter(d => groups.get(d.group_id)?.campaign_id === c.id)}));
+    if (state.performanceView === 'creative') rows = visibleDrafts.map(d => ({editId:d.id, name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', enabled:d.advertiser_enabled !== false, status:d.advertiser_enabled === false ? '소재 꺼짐' : (groups.get(d.group_id)?.advertiser_enabled === false || campaigns.get(groups.get(d.group_id)?.campaign_id)?.advertiser_enabled === false) ? '상위 꺼짐' : d.review_status === 'approved' ? (delivery.get(d.id) ? '노출 중' : '관리자 중지 또는 노출 대기') : ({pending:'검토 대기',rejected:'반려'})[d.review_status] || '확인 중', drafts:[d]}));
+    else if (state.performanceView === 'group') rows = data.groups.filter(g => !state.performanceCampaign || g.campaign_id === state.performanceCampaign).map(g => ({id:g.id, enabled:g.advertiser_enabled !== false, status:g.advertiser_enabled === false ? '꺼짐' : campaigns.get(g.campaign_id)?.advertiser_enabled === false ? '상위 꺼짐' : '켜짐', name:g.name, detail:campaignNames.get(g.campaign_id) || '', drafts:visibleDrafts.filter(d => d.group_id === g.id)}));
+    else rows = data.campaigns.filter(c => !state.performanceCampaign || c.id === state.performanceCampaign).map(c => ({id:c.id, enabled:c.advertiser_enabled !== false, status:c.advertiser_enabled === false ? '꺼짐' : '켜짐', name:c.name, detail:'광고그룹 보기', drafts:visibleDrafts.filter(d => groups.get(d.group_id)?.campaign_id === c.id)}));
     if (!rows.length) { list.textContent = '표시할 항목이 없어요. 광고를 등록하면 여기에 표시됩니다.'; return; }
     const table=document.createElement('table'); table.className='performance-table';
     const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
@@ -243,10 +246,40 @@
       const action=document.createElement('td'), edit=document.createElement('button');
       edit.type='button'; edit.className='link'; edit.textContent='수정';
       const kind=state.performanceView, editId=item.editId || item.id;
-      edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit); row.append(action);
+      edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit);
+      const toggle=document.createElement('button'); toggle.type='button'; toggle.className='link'; toggle.textContent=item.enabled ? '끄기' : '켜기';
+      toggle.setAttribute('aria-label', `${item.name} ${toggle.textContent}`);
+      toggle.addEventListener('click', () => changeDelivery(kind,editId,!item.enabled,toggle)); action.append(toggle);
+      const remove=document.createElement('button'); remove.type='button'; remove.className='link delete-action'; remove.textContent='삭제';
+      remove.setAttribute('aria-label', `${item.name} 삭제`);
+      remove.addEventListener('click', () => deleteItem(kind,editId,item.name,remove)); action.append(remove); row.append(action);
       body.append(row);
     }
     table.append(body); const wrapper=document.createElement('div'); wrapper.className='performance-table-wrap'; wrapper.append(table); list.append(wrapper);
+  }
+  async function changeDelivery(kind,id,enabled,button) {
+    if (!state.session || button.disabled) return;
+    button.disabled=true; message('광고 상태를 변경하고 있어요.');
+    try {
+      await request('/rest/v1/rpc/set_advertiser_delivery', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_kind:kind,p_id:id,p_enabled:enabled})});
+      message(enabled ? '켜기 설정을 저장했어요. 상위 항목과 검수 상태에 따라 실제 노출이 결정됩니다.' : '광고를 껐어요. 해당 항목 아래의 광고도 노출되지 않습니다.');
+      await loadPerformance();
+    } catch (_) { message('상태를 변경하지 못했어요. 다시 시도해 주세요.'); }
+    finally { button.disabled=false; }
+  }
+  async function deleteItem(kind,id,name,button) {
+    if (!state.session || button.disabled) return;
+    const nested=kind === 'campaign' ? '아래 광고그룹과 소재도 함께 삭제됩니다.' : kind === 'group' ? '아래 소재도 함께 삭제됩니다.' : '광고 노출이 중지됩니다.';
+    if (!window.confirm(`“${name}” 항목을 삭제할까요?\n${nested}\n삭제하면 목록에서 사라지며 화면에서 복구할 수 없습니다. 성과 기록과 검수 이력은 보관됩니다.`)) return;
+    button.disabled=true; message('삭제하고 있어요.');
+    try {
+      await request('/rest/v1/rpc/delete_advertiser_item', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_kind:kind,p_id:id})});
+      if (kind === 'campaign') { state.performanceCampaign=null; state.performanceGroup=null; }
+      if (kind === 'group') state.performanceGroup=null;
+      message('삭제했어요. 노출은 중지되고 성과 기록과 검수 이력은 보관됩니다.');
+      await Promise.all([loadPerformance(),loadDrafts()]);
+    } catch (_) { message('삭제하지 못했어요. 다시 시도해 주세요.'); }
+    finally { button.disabled=false; }
   }
   function setPerformanceView(view) {
     state.performanceView=view;
@@ -340,7 +373,7 @@
     list.className = ''; list.textContent = '광고 현황을 불러오고 있어요.';
     for (const id of ['stat-total', 'stat-pending', 'stat-approved', 'stat-rejected']) $(id).textContent = '—';
     try {
-      const drafts = await request(`/rest/v1/advertiser_drafts?select=id,title,created_at,sim_type,country_code,duration_days,review_status,review_note&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc&limit=100`, {headers: headers(true)});
+      const drafts = await request(`/rest/v1/advertiser_drafts?select=id,title,created_at,sim_type,country_code,duration_days,review_status,review_note&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc&limit=100`, {headers: headers(true)});
       if (!Array.isArray(drafts)) throw new Error('Invalid response');
       $('stat-total').textContent = String(drafts.length);
       $('stat-pending').textContent = String(drafts.filter(d => d.review_status === 'pending').length);

@@ -65,7 +65,7 @@
     $('review-list').replaceChildren(node('p','불러오는 중이에요.','empty'));
     try {
       const [drafts, ads, groups, campaigns] = await Promise.all([
-        api('/rest/v1/advertiser_drafts?select=id,group_id,merchant_name,title,description,sim_type,country_code,duration_days,price_krw,image_path,purchase_url,created_at,review_status,review_note,published_ad_id&order=created_at.desc&limit=200', {headers:headers()}),
+        api('/rest/v1/advertiser_drafts?select=id,group_id,merchant_name,title,description,sim_type,country_code,duration_days,price_krw,image_path,purchase_url,created_at,review_status,review_note,published_ad_id&deleted_at=is.null&order=created_at.desc&limit=200', {headers:headers()}),
         api('/rest/v1/sim_ads?select=id,is_active&limit=1000', {headers:headers()}),
         api('/rest/v1/ad_groups?select=id,campaign_id,name,cpc_bid_krw&limit=1000', {headers:headers()}),
         api('/rest/v1/ad_campaigns?select=id,name&limit=1000', {headers:headers()}),
