@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { url: '', key: '', session: null, admin: false, previewUrl: null, view: 'dashboard', campaigns: [], groups: [], performance: null, performanceView: 'campaign' };
+  const state = { url: '', key: '', session: null, admin: false, previewUrl: null, view: 'dashboard', campaigns: [], groups: [], performance: null, performanceView: 'campaign', performanceCampaign: null, performanceGroup: null, performanceRequest: 0 };
   const demo = new URLSearchParams(location.search).get('preview') === '1';
   const message = text => { $('message').textContent = text; };
   const show = (id, visible) => { $(id).hidden = !visible; };
@@ -181,18 +181,24 @@
   }
   async function loadPerformance() {
     if (!state.session) return;
+    const requestId = ++state.performanceRequest;
     const list = $('performance-list'); list.textContent = '성과를 불러오고 있어요.';
+    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—';
     const owner = encodeURIComponent(state.session.user.id);
     try {
       const [campaigns, groups, drafts, metrics] = await Promise.all([
         request(`/rest/v1/ad_campaigns?select=id,name&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request(`/rest/v1/ad_groups?select=id,campaign_id,name&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request(`/rest/v1/advertiser_drafts?select=id,group_id,title,review_status&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request('/rest/v1/rpc/my_ad_performance', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'})
+        request('/rest/v1/rpc/my_ad_performance_period', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})})
       ]);
+      if (requestId !== state.performanceRequest || !state.session) return;
       if (![campaigns, groups, drafts, metrics].every(Array.isArray)) throw new Error('Invalid response');
       state.performance = {campaigns, groups, drafts, metrics}; renderPerformance();
-    } catch (_) { state.performance = null; list.textContent = '성과를 불러오지 못했어요. 새로고침을 눌러 주세요.'; }
+    } catch (_) {
+      if (requestId !== state.performanceRequest) return;
+      state.performance = null; list.textContent = '성과를 불러오지 못했어요. 새로고침을 눌러 주세요.';
+    }
   }
   function renderPerformance() {
     const list = $('performance-list'), data = state.performance;
@@ -201,26 +207,51 @@
     const metrics = new Map(data.metrics.map(m => [m.draft_id, m]));
     const groups = new Map(data.groups.map(g => [g.id,g]));
     const campaignNames = new Map(data.campaigns.map(c => [c.id,c.name]));
+    const visibleDrafts = data.drafts.filter(d => (!state.performanceCampaign || groups.get(d.group_id)?.campaign_id === state.performanceCampaign) && (!state.performanceGroup || d.group_id === state.performanceGroup));
+    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); return total; }, {loaded:0,clicks:0});
+    const total = sums(visibleDrafts);
+    $('performance-loaded').textContent = total.loaded.toLocaleString('ko-KR');
+    $('performance-clicks').textContent = total.clicks.toLocaleString('ko-KR');
+    $('performance-context').textContent = [state.performanceCampaign ? campaignNames.get(state.performanceCampaign) : '전체 캠페인', state.performanceGroup ? groups.get(state.performanceGroup)?.name : null].filter(Boolean).join('  ›  ');
+    show('clear-performance-filter', !!state.performanceCampaign || !!state.performanceGroup);
     let rows;
-    if (state.performanceView === 'creative') rows = data.drafts.map(d => ({name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', drafts:[d]}));
-    else if (state.performanceView === 'group') rows = data.groups.map(g => ({name:g.name, detail:campaignNames.get(g.campaign_id) || '', drafts:data.drafts.filter(d => d.group_id === g.id)}));
-    else rows = data.campaigns.map(c => ({name:c.name, detail:'캠페인 전체 합계', drafts:data.drafts.filter(d => groups.get(d.group_id)?.campaign_id === c.id)}));
-    if (!rows.length) { list.textContent = '아직 등록된 항목이 없어요.'; return; }
+    if (state.performanceView === 'creative') rows = visibleDrafts.map(d => ({name:d.title, detail:groups.get(d.group_id)?.name || '기존 소재', status:({pending:'검토 대기',approved:'승인',rejected:'반려'})[d.review_status] || '확인 중', drafts:[d]}));
+    else if (state.performanceView === 'group') rows = data.groups.filter(g => !state.performanceCampaign || g.campaign_id === state.performanceCampaign).map(g => ({id:g.id, name:g.name, detail:campaignNames.get(g.campaign_id) || '', drafts:visibleDrafts.filter(d => d.group_id === g.id)}));
+    else rows = data.campaigns.filter(c => !state.performanceCampaign || c.id === state.performanceCampaign).map(c => ({id:c.id, name:c.name, detail:'광고그룹 보기', drafts:visibleDrafts.filter(d => groups.get(d.group_id)?.campaign_id === c.id)}));
+    if (!rows.length) { list.textContent = '표시할 항목이 없어요. 광고를 등록하면 여기에 표시됩니다.'; return; }
+    const table=document.createElement('table'); table.className='performance-table';
+    const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
+    const thead=document.createElement('thead'), header=document.createElement('tr');
+    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '목록 불러옴', '클릭', '화면 노출', '광고비']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
+    thead.append(header); table.append(thead);
+    const body=document.createElement('tbody');
     for (const item of rows) {
-      let loaded = 0, clicks = 0;
-      for (const draft of item.drafts) { const m = metrics.get(draft.id); loaded += Number(m?.loaded || 0); clicks += Number(m?.clicks || 0); }
-      const row = document.createElement('div'); row.className = 'performance-row';
-      const label = document.createElement('div'), title = document.createElement('strong'), detail = document.createElement('small');
-      title.textContent = item.name; detail.textContent = item.detail; label.append(title,detail);
-      const values = document.createElement('div'); values.className = 'performance-values'; values.textContent = `목록 불러옴 ${loaded.toLocaleString('ko-KR')} · 클릭 ${clicks.toLocaleString('ko-KR')}`;
-      row.append(label,values); list.append(row);
+      const row=document.createElement('tr'), nameCell=document.createElement('td'), label=document.createElement(item.id ? 'button' : 'strong');
+      label.textContent=item.name;
+      if (item.id) {
+        label.type='button'; label.className='performance-name';
+        label.addEventListener('click', () => {
+          if (state.performanceView === 'campaign') { state.performanceCampaign=item.id; state.performanceGroup=null; setPerformanceView('group'); }
+          else { state.performanceGroup=item.id; state.performanceCampaign=groups.get(item.id)?.campaign_id || null; setPerformanceView('creative'); }
+        });
+      }
+      const detail=document.createElement('small'); detail.textContent=item.detail; nameCell.append(label,detail); row.append(nameCell);
+      const m=sums(item.drafts);
+      for (const value of [item.status || '—',m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),'—','—']) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
+      body.append(row);
     }
+    table.append(body); const wrapper=document.createElement('div'); wrapper.className='performance-table-wrap'; wrapper.append(table); list.append(wrapper);
   }
-  document.querySelectorAll('[data-performance]').forEach(button => button.addEventListener('click', () => {
-    state.performanceView = button.dataset.performance;
-    document.querySelectorAll('[data-performance]').forEach(b => b.classList.toggle('active', b === button));
+  function setPerformanceView(view) {
+    state.performanceView=view;
+    if (view === 'campaign') { state.performanceCampaign=null; state.performanceGroup=null; }
+    if (view === 'group') state.performanceGroup=null;
+    document.querySelectorAll('[data-performance]').forEach(b => b.classList.toggle('active', b.dataset.performance === view));
     renderPerformance();
-  }));
+  }
+  document.querySelectorAll('[data-performance]').forEach(button => button.addEventListener('click', () => setPerformanceView(button.dataset.performance)));
+  $('clear-performance-filter').addEventListener('click', () => { state.performanceCampaign=null; state.performanceGroup=null; renderPerformance(); });
+  $('performance-period').addEventListener('change', loadPerformance);
   $('refresh-performance').addEventListener('click', loadPerformance);
   function updatePreview() {
     $('preview-merchant').textContent = $('merchant').value.trim() || '업체명';

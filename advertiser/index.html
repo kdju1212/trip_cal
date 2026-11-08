@@ -28,10 +28,17 @@
           <div class="stat"><span>반려</span><strong id="stat-rejected">—</strong></div>
         </div>
         <section class="panel performance-panel">
-          <div class="dashboard-list-heading"><div><h2>광고 성과</h2><p>전체 기간 · 앱에서 기록된 활동 기준</p></div><button id="refresh-performance" class="link" type="button">새로고침</button></div>
-          <div class="performance-tabs" role="group" aria-label="성과 구분"><button type="button" class="secondary active" data-performance="campaign">캠페인</button><button type="button" class="secondary" data-performance="group">광고그룹</button><button type="button" class="secondary" data-performance="creative">소재</button></div>
-          <p class="hint">목록 불러옴은 광고 목록에 포함된 횟수이며, 실제 화면 노출 횟수와 달라요. 클릭은 광고 상품을 누른 횟수예요. 기존 앱에서는 기록되지 않으며 광고비 청구용 수치가 아니에요.</p>
+          <div class="performance-top"><div><span class="eyebrow">PERFORMANCE</span><h2>광고 성과</h2><p>캠페인부터 소재까지 한눈에 비교하세요.</p></div><div class="performance-controls"><label class="period-label">조회 기간<select id="performance-period"><option value="1">오늘</option><option value="7">최근 7일</option><option value="30" selected>최근 30일</option><option value="0">전체 기간</option></select></label><button id="refresh-performance" class="secondary" type="button">새로고침</button></div></div>
+          <div class="performance-summary" aria-label="선택 기간 성과 요약">
+            <div><span>목록 불러옴</span><strong id="performance-loaded">—</strong><small>광고 목록에 포함된 횟수</small></div>
+            <div><span>클릭</span><strong id="performance-clicks">—</strong><small>광고 상품을 누른 횟수</small></div>
+            <div><span>화면 노출</span><strong>—</strong><small>아직 측정하지 않아요</small></div>
+            <div><span>광고비</span><strong>—</strong><small>과금 기능 준비 중</small></div>
+          </div>
+          <div class="performance-toolbar"><div class="performance-tabs" role="group" aria-label="성과 구분"><button type="button" class="secondary active" data-performance="campaign">캠페인</button><button type="button" class="secondary" data-performance="group">광고그룹</button><button type="button" class="secondary" data-performance="creative">소재</button></div><button id="clear-performance-filter" class="link" type="button" hidden>전체 보기</button></div>
+          <p id="performance-context" class="performance-context">전체 캠페인</p>
           <div id="performance-list" aria-live="polite">성과를 불러오고 있어요.</div>
+          <p class="performance-footnote">한국 시간 기준 · 목록 불러옴은 실제 화면 노출과 달라요. 수치는 광고비 청구에 사용되지 않으며, 성과 기록 기능이 포함된 앱에서만 집계됩니다.</p>
         </section>
         <section class="panel"><div class="dashboard-list-heading"><div><h2>최근 광고 요청</h2><p>최근 100개 요청 기준이에요.</p></div><button id="refresh-drafts" class="link" type="button">새로고침</button></div><div id="drafts" aria-live="polite"></div></section>
       </section>
