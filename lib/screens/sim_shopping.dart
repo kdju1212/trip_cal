@@ -34,7 +34,7 @@ class _SimShoppingScreenState extends State<SimShoppingScreen> {
     final departure = widget.departure;
     final endDate = widget.endDate;
     final type = isEsim ? 'eSIM' : '유심';
-    final place = country == null || country!.code == 'KR' ? '해외여행' : country!.name;
+    final place = country == null || country.code == 'KR' ? '해외여행' : country.name;
     final days = tripCalendarDays(departure, endDate);
     final options = <(String, String, IconData)>[
       if (days != null) ('$days일', '여행 기간에 맞는 상품 찾아보기', Icons.event_available_outlined),
