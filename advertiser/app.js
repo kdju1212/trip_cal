@@ -1,7 +1,7 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { url: '', key: '', session: null, previewUrl: null };
+  const state = { url: '', key: '', session: null, admin: false, previewUrl: null };
   const demo = new URLSearchParams(location.search).get('preview') === '1';
   const message = text => { $('message').textContent = text; };
   const show = (id, visible) => { $(id).hidden = !visible; };
@@ -39,6 +39,7 @@
       $('drafts').textContent = '미리보기에서는 광고가 등록되지 않아요.';
       return;
     }
+    show('admin-link', !!state.session && state.admin);
     show('config-panel', !configValid(state.url, state.key));
     show('auth-panel', configValid(state.url, state.key) && !state.session);
     show('workspace', !!state.session);
@@ -62,15 +63,47 @@
       const result = await request(path, {method: 'POST', headers: {...headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({email, password})});
       $('password').value = '';
       if (!result?.access_token || !result?.user) { message('가입 확인 메일을 확인한 뒤 로그인해 주세요.'); return; }
-      state.session = result; renderAuth(); message(''); await loadDrafts();
+      state.session = result;
+      const stored = window.TripSession.save(result, state.url);
+      state.admin = false;
+      renderAuth(); message('');
+      await Promise.all([checkAdmin(), loadDrafts()]);
+      if (!stored) message('브라우저에서 로그인 상태를 저장할 수 없어 화면 이동이 제한될 수 있어요.');
     } catch (_) { message('로그인 또는 가입에 실패했어요. 입력 정보와 이메일 확인 여부를 확인해 주세요.'); }
+  }
+  async function checkAdmin() {
+    if (!state.session) return;
+    const token = state.session.access_token;
+    try {
+      const allowed = await request('/rest/v1/rpc/is_ad_admin', {method: 'POST', headers: {...headers(true), 'Content-Type': 'application/json'}, body: '{}'});
+      if (state.session?.access_token === token) { state.admin = allowed === true; renderAuth(); }
+    } catch (_) {
+      if (state.session?.access_token === token) { state.admin = false; renderAuth(); message('관리자 권한을 확인하지 못했어요. 다시 로그인해 주세요.'); }
+    }
+  }
+  async function restoreSession() {
+    if (demo || !configValid(state.url, state.key)) return;
+    const saved = window.TripSession.read(state.url);
+    if (!saved) return;
+    try {
+      state.session = saved;
+      const user = await request('/auth/v1/user', {headers: headers(true)});
+      if (!user?.id) throw new Error('Invalid session');
+      state.session.user = user;
+      window.TripSession.save(state.session, state.url);
+      renderAuth();
+      await Promise.all([checkAdmin(), loadDrafts()]);
+    } catch (_) {
+      state.session = null; state.admin = false; window.TripSession.clear(); renderAuth();
+      message('로그인 상태를 확인하지 못했어요. 다시 로그인해 주세요.');
+    }
   }
   $('auth-form').addEventListener('submit', event => { event.preventDefault(); authenticate(false); });
   $('signup').addEventListener('click', () => authenticate(true));
   $('logout').addEventListener('click', async () => {
     const token = state.session?.access_token;
     try { if (token) await request('/auth/v1/logout', {method: 'POST', headers: headers(true)}); } catch (_) { /* local logout still completes */ }
-    state.session = null; $('ad-form').reset(); updatePreview(); renderAuth(); message('로그아웃했어요.');
+    state.session = null; state.admin = false; window.TripSession.clear(); $('ad-form').reset(); updatePreview(); renderAuth(); message('로그아웃했어요.');
   });
   function updatePreview() {
     $('preview-merchant').textContent = $('merchant').value.trim() || '업체명';
@@ -90,7 +123,7 @@
   async function loadDrafts() {
     const list = $('drafts'); list.replaceChildren();
     try {
-      const drafts = await request('/rest/v1/advertiser_drafts?select=id,title,created_at,review_status,review_note&order=created_at.desc', {headers: headers(true)});
+      const drafts = await request(`/rest/v1/advertiser_drafts?select=id,title,created_at,review_status,review_note&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)});
       if (!drafts.length) { list.textContent = '아직 등록한 광고가 없어요.'; return; }
       for (const draft of drafts) {
         const item = document.createElement('div'); item.className = 'draft';
@@ -135,5 +168,5 @@
     const config = configValid(saved.url, saved.key) ? saved : window.ADVERTISER_CONFIG || {};
     if (configValid(config.url, config.key)) { state.url = config.url; state.key = config.key; }
   } catch (_) { /* configuration can be entered again */ }
-  renderAuth(); updatePreview();
+  renderAuth(); updatePreview(); restoreSession();
 })();

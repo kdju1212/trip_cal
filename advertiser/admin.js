@@ -18,25 +18,47 @@
     return body;
   }
   function loggedIn(on) { $('admin-login').hidden = on; $('admin-workspace').hidden = !on; if (on) $('admin-account').textContent = state.session.user.email; }
-  $('login-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    if (!configured()) { msg('서버 연결 정보가 설정되지 않았어요.'); return; }
-    msg('로그인 중이에요.');
+  async function restoreAdmin() {
+    if (!configured()) {
+      $('admin-login-title').textContent = '서버 연결 필요';
+      $('admin-login-help').textContent = '광고센터에서 서버 연결 설정을 확인해 주세요.';
+      $('unified-login').hidden = false;
+      return;
+    }
+    const saved = window.TripSession.read(config.url.replace(/\/$/, ''));
+    if (!saved) {
+      $('admin-login-title').textContent = '로그인이 필요해요';
+      $('admin-login-help').textContent = '통합 로그인 후 관리자 센터로 이동해 주세요.';
+      $('unified-login').hidden = false;
+      return;
+    }
+    state.session = saved;
     try {
-      const keyHeaders = {apikey: config.key, 'Content-Type': 'application/json'};
-      if (!config.key.startsWith('sb_publishable_')) keyHeaders.Authorization = `Bearer ${config.key}`;
-      const session = await api('/auth/v1/token?grant_type=password', {method:'POST', headers:keyHeaders, body:JSON.stringify({email:$('admin-email').value.trim(), password:$('admin-password').value})});
-      $('admin-password').value = '';
-      if (!session?.access_token || !session?.user) throw new Error('로그인 정보를 확인해 주세요.');
-      state.session = session;
+      const user = await api('/auth/v1/user', {headers: headers()});
+      if (!user?.id) throw new Error('로그인 상태를 확인하지 못했어요.');
+      state.session.user = user;
+      window.TripSession.save(state.session, config.url.replace(/\/$/, ''));
       const permitted = await api('/rest/v1/rpc/is_ad_admin', {method:'POST', headers:{...headers(), 'Content-Type':'application/json'}, body:'{}'});
-      if (permitted !== true) { state.session = null; throw new Error('이 계정에 관리자 권한이 없습니다.'); }
+      if (permitted !== true) {
+        state.session = null;
+        $('admin-login-title').textContent = '관리자 권한이 없어요';
+        $('admin-login-help').textContent = '광고주 센터를 이용하거나 관리자에게 권한을 문의해 주세요.';
+        $('unified-login').textContent = '광고주 센터로 이동';
+        $('unified-login').hidden = false;
+        return;
+      }
       loggedIn(true); msg(''); await refresh();
-    } catch (err) { state.session = null; loggedIn(false); msg(err.message || '로그인하지 못했어요.'); }
-  });
+    } catch (_) {
+      state.session = null;
+      $('admin-login-title').textContent = '로그인을 확인하지 못했어요';
+      $('admin-login-help').textContent = '연결 상태를 확인하고 통합 로그인에서 다시 로그인해 주세요.';
+      $('unified-login').hidden = false;
+    }
+  }
   $('admin-logout').addEventListener('click', async () => {
-    try { await api('/auth/v1/logout', {method:'POST', headers:headers()}); } catch (_) { /* clear local session even offline */ }
-    state.session = null; state.drafts = []; state.ads = []; state.signed.clear(); loggedIn(false); msg('로그아웃했어요.');
+    try { await api('/auth/v1/logout?scope=local', {method:'POST', headers:headers()}); } catch (_) { /* clear local session even offline */ }
+    state.session = null; state.drafts = []; state.ads = []; state.signed.clear(); window.TripSession.clear();
+    window.location.assign('index.html');
   });
   async function refresh() {
     if (!state.session) return;
@@ -123,4 +145,5 @@
     try{await api('/rest/v1/rpc/set_ad_active',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({p_ad_id:ad.id,p_active:!ad.is_active})});msg(ad.is_active?'광고 노출을 중지했어요.':'광고를 다시 노출합니다.');await refresh();}
     catch(err){msg(err.message || '변경하지 못했어요.');}finally{state.busy=false;}
   }
+  restoreAdmin();
 })();

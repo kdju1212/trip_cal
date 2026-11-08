@@ -7,13 +7,13 @@
 </head>
 <body>
   <main>
-    <nav class="top-nav"><a class="active" href="index.html">광고주 센터</a><a href="admin.html">관리자 센터</a></nav><header><span class="eyebrow">여행 준비 도우미</span><h1>유심·eSIM 광고 등록</h1><p>상품을 입력하고 앱에 보일 모습을 미리 확인하세요.</p></header>
+    <nav class="top-nav"><a class="active" href="index.html">광고주 센터</a><a id="admin-link" href="admin.html" hidden>관리자 센터</a></nav><header><span class="eyebrow">여행 준비 도우미</span><h1>유심·eSIM 광고 등록</h1><p>상품을 입력하고 앱에 보일 모습을 미리 확인하세요.</p></header>
     <section id="config-panel" class="panel" hidden>
       <h2>서버 연결</h2><p>운영자가 프로젝트의 공개 정보를 설정합니다.</p>
       <form id="config-form"><label>Supabase URL<input id="project-url" type="url" placeholder="https://프로젝트.supabase.co" required></label><label>공개용 키<input id="public-key" type="text" autocomplete="off" required></label><button type="submit">연결 정보 저장</button></form>
     </section>
     <section id="auth-panel" class="panel" hidden>
-      <h2>광고 계정</h2><p>이메일로 로그인하거나 계정을 만들어 주세요.</p>
+      <h2>로그인</h2><p>이메일 하나로 광고주 센터와 관리자 센터를 이용할 수 있어요.</p>
       <form id="auth-form"><label>이메일<input id="email" type="email" autocomplete="email" required></label><label>비밀번호<input id="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="actions"><button type="submit">로그인</button><button id="signup" class="secondary" type="button">계정 만들기</button></div></form>
     </section>
     <div id="workspace" hidden>
@@ -37,5 +37,5 @@
     </div>
     <p id="message" role="status" aria-live="polite"></p>
     <footer>상품 정보와 판매 조건은 판매업체가 정확하게 입력해 주세요.</footer>
-  </main><script src="config.js" defer></script><script src="app.js" defer></script>
+  </main><script src="config.js" defer></script><script src="session.js" defer></script><script src="app.js" defer></script>
 </body></html>

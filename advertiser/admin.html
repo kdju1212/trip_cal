@@ -3,10 +3,10 @@
 <body><main>
   <nav class="top-nav"><a href="index.html">광고주 센터</a><a class="active" href="admin.html">관리자 센터</a></nav>
   <header><span class="eyebrow">여행 준비 도우미</span><h1>광고 관리</h1><p>접수된 광고를 검토하고 앱 노출을 관리하세요.</p></header>
-  <section class="panel" id="admin-login"><h2>관리자 로그인</h2><p>관리자 권한이 부여된 계정으로 로그인해 주세요.</p><form id="login-form"><label>이메일<input id="admin-email" type="email" autocomplete="email" required></label><label>비밀번호<input id="admin-password" type="password" autocomplete="current-password" required></label><button type="submit">로그인</button></form></section>
+  <section class="panel" id="admin-login"><h2 id="admin-login-title">로그인 확인 중</h2><p id="admin-login-help">잠시만 기다려 주세요.</p><a href="index.html" id="unified-login" hidden>통합 로그인으로 이동</a></section>
   <div id="admin-workspace" hidden><div class="workspace-bar"><span id="admin-account"></span><button id="admin-logout" class="link" type="button">로그아웃</button></div>
     <div class="admin-layout"><section class="panel"><div class="review-head"><div><h2>광고 검수</h2><p>내용과 구매 링크를 확인한 후 승인하거나 반려해 주세요.</p></div><button class="link" id="admin-refresh" type="button">새로고침</button></div><div class="filter" role="group" aria-label="광고 상태"><button data-filter="pending" class="active" type="button">검토 대기</button><button data-filter="approved" type="button">승인</button><button data-filter="rejected" type="button">반려</button></div><div id="review-list" aria-live="polite"></div></section>
       <aside class="panel admin-summary"><h2>검수 현황</h2><div class="summary-number" id="pending-count">0</div><div class="summary-label">검토 대기</div><div class="summary-number" id="approved-count">0</div><div class="summary-label">승인된 요청</div><p class="status-note">광고를 승인하면 조건에 맞는 유심·eSIM 화면에 표시됩니다.</p></aside></div>
   </div>
   <p id="admin-message" role="status" aria-live="polite"></p><footer>광고주 입력 정보와 판매 조건을 확인한 후 승인해 주세요.</footer>
-</main><script src="config.js" defer></script><script src="admin.js" defer></script></body></html>
+</main><script src="config.js" defer></script><script src="session.js" defer></script><script src="admin.js" defer></script></body></html>
