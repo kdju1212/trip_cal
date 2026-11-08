@@ -2,7 +2,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const config = window.ADVERTISER_CONFIG || {};
-  const state = {session: null, drafts: [], ads: [], filter: 'pending', busy: false, signed: new Map(), groups: [], campaigns: []};
+  const state = {session: null, drafts: [], ads: [], filter: 'pending', busy: false, signed: new Map(), groups: [], campaigns: [], billingEnabled: false};
   const msg = value => { $('admin-message').textContent = value; };
   const headers = () => ({apikey: config.key, Authorization: `Bearer ${state.session.access_token}`});
   const node = (tag, text, className) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (className) e.className = className; return e; };
@@ -47,7 +47,7 @@
         $('unified-login').hidden = false;
         return;
       }
-      loggedIn(true); msg(''); await refresh();
+      loggedIn(true); msg(''); await Promise.all([refresh(), loadWallets()]);
     } catch (_) {
       state.session = null;
       $('admin-login-title').textContent = '로그인을 확인하지 못했어요';
@@ -76,6 +76,47 @@
       render();
     } catch (_) { $('review-list').replaceChildren(node('p','광고를 불러오지 못했어요. 서버 설정을 확인하고 다시 시도해 주세요.','empty')); }
   }
+  async function loadWallets() {
+    if (!state.session) return;
+    const help=$('wallet-help'), message=$('wallet-message');
+    for (const id of ['wallet-owner','wallet-amount','wallet-reference','wallet-submit']) $(id).disabled=true;
+    help.textContent='잔액 정보를 불러오고 있어요.'; message.textContent='';
+    try {
+      const [enabled, wallets]=await Promise.all([
+        api('/rest/v1/rpc/ad_billing_enabled',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'}),
+        api('/rest/v1/rpc/list_advertiser_wallets',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'}),
+      ]);
+      if (typeof enabled !== 'boolean' || !Array.isArray(wallets)) throw new Error('잔액 정보를 확인할 수 없어요.');
+      state.billingEnabled=enabled;
+      const select=$('wallet-owner'), previous=select.value; select.replaceChildren();
+      const empty=node('option','광고주 선택'); empty.value=''; select.append(empty);
+      for (const wallet of wallets) { const option=node('option',`${wallet.email || '계정'} · 잔액 ${Number(wallet.balance_krw).toLocaleString('ko-KR')}원`); option.value=wallet.owner_id; select.append(option); }
+      if (wallets.some(w=>w.owner_id===previous)) select.value=previous;
+      help.textContent=enabled ? '입금을 확인한 후 거래 고유번호로 충전하세요.' : '유료 과금 준비 중입니다. 입금을 받거나 잔액을 충전할 수 없어요.';
+      for (const id of ['wallet-owner','wallet-amount','wallet-reference','wallet-submit']) $(id).disabled=!enabled;
+    } catch (_) { state.billingEnabled=false; help.textContent='잔액 정보를 불러오지 못했어요. 새로고침해 주세요.'; }
+  }
+  async function receiptKey(value) {
+    const bytes=new TextEncoder().encode(value.trim().toLowerCase());
+    const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
+    const hex=Array.from(digest.slice(0,16),b=>b.toString(16).padStart(2,'0')).join('');
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  }
+  $('wallet-refresh').addEventListener('click', loadWallets);
+  $('wallet-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!state.session || !state.billingEnabled || $('wallet-submit').disabled) return;
+    const owner=$('wallet-owner').value, amount=Number($('wallet-amount').value), receipt=$('wallet-reference').value.trim();
+    if (!owner || !Number.isSafeInteger(amount) || amount<1 || amount>1000000000 || receipt.length<3 || receipt.length>80) { $('wallet-message').textContent='광고주, 금액과 입금 거래 고유번호를 확인해 주세요.'; return; }
+    if (!window.confirm(`입금 확인 후 ${amount.toLocaleString('ko-KR')}원을 이 광고주에게 충전할까요?`)) return;
+    const button=$('wallet-submit'); button.disabled=true; $('wallet-message').textContent='충전 중이에요.';
+    try {
+      const reference=await receiptKey(receipt);
+      await api('/rest/v1/rpc/confirm_manual_ad_topup',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({p_owner:owner,p_amount:amount,p_reference:reference,p_note:receipt})});
+      $('wallet-form').reset(); await loadWallets(); $('wallet-message').textContent='입금을 확인하고 충전했어요.';
+    } catch (_) { $('wallet-message').textContent='충전 결과를 확인하지 못했어요. 같은 거래 번호를 유지하고 잔액을 확인해 주세요.'; }
+    finally { button.disabled=!state.billingEnabled; }
+  });
   $('admin-refresh').addEventListener('click', refresh);
   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
     state.filter = button.dataset.filter;

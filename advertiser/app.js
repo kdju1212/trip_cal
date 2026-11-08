@@ -183,19 +183,22 @@
     if (!state.session) return;
     const requestId = ++state.performanceRequest;
     const list = $('performance-list'); list.textContent = '성과를 불러오고 있어요.';
-    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—';
+    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—'; $('performance-cost').textContent = '—'; $('performance-balance').textContent = '—';
     const owner = encodeURIComponent(state.session.user.id);
     try {
-      const [campaigns, groups, drafts, metrics, delivery] = await Promise.all([
+      const [campaigns, groups, drafts, metrics, delivery, costs, billingEnabled, wallets] = await Promise.all([
         request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
         request('/rest/v1/rpc/my_ad_performance_breakdown', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
-        request('/rest/v1/rpc/my_ad_delivery', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'})
+        request('/rest/v1/rpc/my_ad_delivery', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'}),
+        request('/rest/v1/rpc/my_ad_costs', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
+        request('/rest/v1/rpc/ad_billing_enabled', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'}),
+        request(`/rest/v1/ad_wallets?select=balance_krw&owner_id=eq.${owner}`, {headers:headers(true)})
       ]);
       if (requestId !== state.performanceRequest || !state.session) return;
-      if (![campaigns, groups, drafts, metrics, delivery].every(Array.isArray)) throw new Error('Invalid response');
-      state.performance = {campaigns, groups, drafts, metrics, delivery}; renderPerformance();
+      if (![campaigns, groups, drafts, metrics, delivery, costs, wallets].every(Array.isArray) || typeof billingEnabled !== 'boolean') throw new Error('Invalid response');
+      state.performance = {campaigns, groups, drafts, metrics, delivery, costs, billingEnabled, wallets}; renderPerformance();
     } catch (_) {
       if (requestId !== state.performanceRequest) return;
       state.performance = null; list.textContent = '성과를 불러오지 못했어요. 새로고침을 눌러 주세요.';
@@ -206,15 +209,19 @@
     if (!data) return;
     list.replaceChildren();
     const metrics = new Map(data.metrics.map(m => [m.draft_id, m]));
+    const costs = new Map(data.costs.map(c => [c.draft_id, c.cost_krw]));
     const groups = new Map(data.groups.map(g => [g.id,g]));
     const campaignNames = new Map(data.campaigns.map(c => [c.id,c.name]));
     const campaigns = new Map(data.campaigns.map(c => [c.id,c]));
     const delivery = new Map(data.delivery.map(d => [d.draft_id,d.admin_active]));
     const visibleDrafts = data.drafts.filter(d => (!state.performanceCampaign || groups.get(d.group_id)?.campaign_id === state.performanceCampaign) && (!state.performanceGroup || d.group_id === state.performanceGroup));
-    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); total.candidate+=Number(m?.candidate || 0); total.excluded+=Number(m?.excluded || 0); total.unverified+=Number(m?.unverified || 0); return total; }, {loaded:0,clicks:0,candidate:0,excluded:0,unverified:0});
+    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); total.candidate+=Number(m?.candidate || 0); total.excluded+=Number(m?.excluded || 0); total.unverified+=Number(m?.unverified || 0); total.cost+=Number(costs.get(d.id) || 0); return total; }, {loaded:0,clicks:0,candidate:0,excluded:0,unverified:0,cost:0});
     const total = sums(visibleDrafts);
     $('performance-loaded').textContent = total.loaded.toLocaleString('ko-KR');
     $('performance-clicks').textContent = total.clicks.toLocaleString('ko-KR');
+    $('performance-cost').textContent = data.billingEnabled ? `${total.cost.toLocaleString('ko-KR')}원` : '—';
+    $('performance-cost-help').textContent = data.billingEnabled ? '실제 차감된 광고비' : '실제 과금 준비 중';
+    $('performance-balance').textContent = data.billingEnabled ? `${Number(data.wallets[0]?.balance_krw || 0).toLocaleString('ko-KR')}원` : '—';
     $('performance-context').textContent = [state.performanceCampaign ? campaignNames.get(state.performanceCampaign) : '전체 캠페인', state.performanceGroup ? groups.get(state.performanceGroup)?.name : null].filter(Boolean).join('  ›  ');
     show('clear-performance-filter', !!state.performanceCampaign || !!state.performanceGroup);
     let rows;
@@ -225,7 +232,7 @@
     const table=document.createElement('table'); table.className='performance-table';
     const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
     const thead=document.createElement('thead'), header=document.createElement('tr');
-    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '노출수', '클릭수', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
+    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '노출수', '클릭수', '비용', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
     thead.append(header); table.append(thead);
     const body=document.createElement('tbody');
     for (const item of rows) {
@@ -249,7 +256,7 @@
       if (item.status && item.status !== switchLabel.textContent) { const detail=document.createElement('small'); detail.textContent=item.status; stateCell.append(detail); }
       row.append(stateCell);
       const m=sums(item.drafts);
-      for (const value of [m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR')]) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
+      for (const value of [m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),data.billingEnabled ? `${m.cost.toLocaleString('ko-KR')}원` : '—']) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
       const action=document.createElement('td'), edit=document.createElement('button');
       edit.type='button'; edit.className='link'; edit.textContent='수정';
       edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit);

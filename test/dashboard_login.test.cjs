@@ -16,7 +16,7 @@ function browser(storage, role, loginError = false, fixtures = []) {
       id, hidden: true, textContent: '', value: '', disabled: false, files: [], validity: {valid:true},
       listeners: {}, dataset:{}, classList:{toggle(){}},
       addEventListener(event, callback) { this.listeners[event] = callback; },
-      replaceChildren(){}, append(){}, removeAttribute(){},
+      replaceChildren(){}, append(){}, removeAttribute(){}, setAttribute(){}, reset(){}, showModal(){this.open=true;}, close(){this.open=false;},
     });
     return elements.get(id);
   }
@@ -29,7 +29,7 @@ function browser(storage, role, loginError = false, fixtures = []) {
     document:{getElementById:el,querySelectorAll(){return [];},createElement(){return el('created-'+Math.random());}},
     fetch:async (url, options={})=>{
       const u = new URL(url), token = options.headers?.Authorization;
-      responses.push({path:u.pathname, search:u.search, token});
+      responses.push({path:u.pathname, search:u.search, token, method:options.method || 'GET', body:options.body});
       let body;
       if (u.pathname==='/auth/v1/token' && loginError) return {ok:false,status:400,text:async()=>JSON.stringify({error_code:'email_not_confirmed'})};
       if (u.pathname==='/auth/v1/token') body = {access_token:'token',expires_in:3600,user:{id:'user-1',email:'test@example.com'},refresh_token:'never-store'};
@@ -39,6 +39,9 @@ function browser(storage, role, loginError = false, fixtures = []) {
       else if(u.pathname==='/rest/v1/rpc/is_ad_admin') body = role;
       else if(u.pathname==='/rest/v1/advertiser_drafts') body = fixtures;
       else if(u.pathname==='/rest/v1/sim_ads') body = [];
+      else if(u.pathname==='/rest/v1/ad_campaigns' && options.method==='POST') body = [{id:'campaign-1',name:JSON.parse(options.body).name}];
+      else if(u.pathname==='/rest/v1/rpc/ad_billing_enabled') body = false;
+      else if(u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs') body = [];
       else if(u.pathname==='/auth/v1/logout') body = {};
       else throw new Error('Unexpected request '+u.pathname);
       return {ok:true,status:200,text:async()=>JSON.stringify(body)};
@@ -139,4 +142,18 @@ test('이메일 미인증 로그인은 인증 안내를 보여주고 세션을 �
   assert.equal(login.el('workspace').hidden,true);
   assert.equal(storage.size,0);
   assert.match(login.el('message').textContent,/인증이 아직 완료되지/);
+});
+
+test('소재 없이 새 캠페인을 따로 만들 수 있다', async () => {
+  const storage = new Map(), b = browser(storage,false);
+  vm.runInContext(source('app.js'),b.context);
+  b.el('email').value='test@example.com'; b.el('password').value='password123';
+  await b.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  b.el('new-campaign-button').listeners.click();
+  assert.equal(b.el('edit-dialog').open,true);
+  b.el('edit-name').value='여름 여행'; b.el('edit-budget').value='10000';
+  await b.el('edit-form').listeners.submit({preventDefault(){}});
+  const created=b.responses.find(x=>x.path==='/rest/v1/ad_campaigns' && x.method==='POST');
+  assert.deepEqual(JSON.parse(created.body),{name:'여름 여행',daily_budget_krw:10000});
+  assert.ok(!b.responses.some(x=>x.path==='/rest/v1/advertiser_drafts' && x.method==='POST'));
 });
