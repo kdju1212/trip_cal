@@ -8,7 +8,7 @@ import 'package:trip_cal/screens/sim_shopping.dart';
 
 void main() {
   testWidgets('여행 기간에 맞는 업체 상품을 광고로 표시한다', (tester) async {
-    final client = MockClient((request) async => http.Response('[{"merchant_name":"판매점","title":"일본 데이터","description":"하루 1GB","duration_days":3,"price_krw":5000,"purchase_url":"https://example.com/item","image_url":null}]', 200));
+    final client = MockClient((request) async => http.Response('[{"merchant_name":"판매점","title":"일본 데이터","description":"하루 1GB","duration_days":3,"price_krw":5000,"purchase_url":"https://example.com/item","image_url":null}]', 200, headers: {'content-type': 'application/json; charset=utf-8'}));
     final service = SimAdsService(client: client, url: 'https://example.supabase.co', anonKey: 'public-key');
     await tester.pumpWidget(MaterialApp(home: SimShoppingScreen(country: countryByCode('JP'), isEsim: true, departure: '2027-01-01', endDate: '2027-01-03', adsService: service)));
     await tester.pumpAndSettle();
@@ -26,7 +26,7 @@ void main() {
       expect(request.url.queryParameters['sim_type'], 'eq.esim');
       expect(request.url.queryParameters['duration_days'], 'eq.3');
       expect(request.headers['apikey'], 'public-key');
-      return http.Response('[{"merchant_name":"판매점","title":"일본 데이터","description":"하루 1GB","duration_days":3,"price_krw":5000,"purchase_url":"https://example.com/item","image_url":null}]', 200);
+      return http.Response('[{"merchant_name":"판매점","title":"일본 데이터","description":"하루 1GB","duration_days":3,"price_krw":5000,"purchase_url":"https://example.com/item","image_url":null}]', 200, headers: {'content-type': 'application/json; charset=utf-8'});
     });
     final service = SimAdsService(client: client, url: 'https://example.supabase.co', anonKey: 'public-key');
     final ads = await service.fetch(countryCode: 'JP', isEsim: true, days: 3);
@@ -35,7 +35,7 @@ void main() {
     service.close();
   });
   test('잘못된 링크는 거부하고 연결 정보가 없으면 요청하지 않는다', () async {
-    final client = MockClient((request) async => http.Response('[{"merchant_name":"판매점","title":"유심","description":"","duration_days":3,"purchase_url":"http://unsafe.example"}]', 200));
+    final client = MockClient((request) async => http.Response('[{"merchant_name":"판매점","title":"유심","description":"","duration_days":3,"purchase_url":"http://unsafe.example"}]', 200, headers: {'content-type': 'application/json; charset=utf-8'}));
     final service = SimAdsService(client: client, url: 'https://example.supabase.co', anonKey: 'public-key');
     expect(await service.fetch(countryCode: 'JP', isEsim: false), isEmpty);
     service.close();
