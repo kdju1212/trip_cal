@@ -128,7 +128,7 @@
   $('logout').addEventListener('click', async () => {
     const token = state.session?.access_token;
     try { if (token) await request('/auth/v1/logout', {method: 'POST', headers: headers(true)}); } catch (_) { /* local logout still completes */ }
-    state.session = null; state.admin = false; state.view = 'dashboard'; state.campaigns = []; state.groups = []; state.performance = null; window.TripSession.clear(); $('ad-form').reset();
+    state.session = null; state.admin = false; state.view = 'dashboard'; state.campaigns = []; state.groups = []; state.performance = null; window.TripSession.clear(); $('ad-form').reset(); $('image').setCustomValidity('');
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true);
     updatePreview(); renderAuth(); message('로그아웃했어요.');
@@ -230,12 +230,22 @@
     $('preview-price').textContent = price ? `등록 가격 ${Number(price).toLocaleString('ko-KR')}원` : '';
   }
   $('ad-form').addEventListener('input', updatePreview);
-  $('image').addEventListener('change', () => {
+  $('image').addEventListener('change', async () => {
+    const input = $('image'), file = input.files[0];
+    input.setCustomValidity('');
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = null;
-    const file = $('image').files[0];
-    if (file) { state.previewUrl = URL.createObjectURL(file); $('preview-image').src = state.previewUrl; }
-    show('preview-image', !!file); show('image-placeholder', !file);
+    $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true);
+    if (!file) return;
+    const square = await window.TripImageRatio.isSquare(file);
+    if (input.files[0] !== file) return;
+    if (!square) {
+      input.setCustomValidity('이미지는 가로와 세로가 같은 1:1 정사각형으로 선택해 주세요.');
+      message('이미지는 가로와 세로가 같은 1:1 정사각형으로 선택해 주세요.');
+      return;
+    }
+    state.previewUrl = URL.createObjectURL(file); $('preview-image').src = state.previewUrl;
+    show('preview-image', true); show('image-placeholder', false);
   });
   async function loadDrafts() {
     const list = $('drafts');
@@ -282,6 +292,14 @@
     if (!https(purchase)) { message('구매 링크는 https://로 시작해야 해요.'); return; }
     const description = $('description').value.trim();
     if (!description || /[\r\n]/.test(description)) { message('설명은 한 줄로 입력해 주세요.'); return; }
+    if ($('submit-ad').disabled) return;
+    $('submit-ad').disabled = true;
+    const square = await window.TripImageRatio.isSquare(file);
+    if (!square || $('image').files[0] !== file) {
+      $('submit-ad').disabled = false;
+      message('이미지는 가로와 세로가 같은 1:1 정사각형으로 선택해 주세요.');
+      return;
+    }
     const extension = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type];
     const objectPath = `${state.session.user.id}/${crypto.randomUUID()}.${extension}`;
     $('submit-ad').disabled = true; message('광고를 등록하고 있어요.');
@@ -304,7 +322,7 @@
         image_path: objectPath, purchase_url: purchase,
       };
       await request('/rest/v1/advertiser_drafts', {method: 'POST', headers: {...headers(true), 'Content-Type': 'application/json', Prefer: 'return=minimal'}, body: JSON.stringify(body)});
-      $('ad-form').reset(); updateCampaignSelection();
+      $('ad-form').reset(); $('image').setCustomValidity(''); updateCampaignSelection();
       if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
       state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true); updatePreview();
       setView('dashboard'); message('검토 요청을 보냈어요. 관리자 확인 후 앱에 표시됩니다.'); await Promise.all([loadDrafts(), loadPerformance()]);
