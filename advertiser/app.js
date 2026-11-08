@@ -247,9 +247,11 @@
       edit.type='button'; edit.className='link'; edit.textContent='수정';
       const kind=state.performanceView, editId=item.editId || item.id;
       edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit);
-      const toggle=document.createElement('button'); toggle.type='button'; toggle.className='link'; toggle.textContent=item.enabled ? '끄기' : '켜기';
-      toggle.setAttribute('aria-label', `${item.name} ${toggle.textContent}`);
-      toggle.addEventListener('click', () => changeDelivery(kind,editId,!item.enabled,toggle)); action.append(toggle);
+      const switchWrap=document.createElement('span'); switchWrap.className='delivery-switch-wrap';
+      const toggle=document.createElement('button'); toggle.type='button'; toggle.className='delivery-switch';
+      toggle.setAttribute('role', 'switch'); toggle.setAttribute('aria-label', `${item.name} 광고 설정`); toggle.setAttribute('aria-checked', String(item.enabled));
+      const switchLabel=document.createElement('span'); switchLabel.className='delivery-switch-label'; switchLabel.textContent=item.enabled ? '켜짐' : '꺼짐';
+      toggle.addEventListener('click', () => changeDelivery(kind,editId,!item.enabled,toggle)); switchWrap.append(toggle,switchLabel); action.append(switchWrap);
       const remove=document.createElement('button'); remove.type='button'; remove.className='link delete-action'; remove.textContent='삭제';
       remove.setAttribute('aria-label', `${item.name} 삭제`);
       remove.addEventListener('click', () => deleteItem(kind,editId,item.name,remove)); action.append(remove); row.append(action);
