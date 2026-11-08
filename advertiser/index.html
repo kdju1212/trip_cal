@@ -15,6 +15,7 @@
     <section id="auth-panel" class="panel" hidden>
       <h2>로그인</h2><p>이메일 하나로 광고주 센터와 관리자 센터를 이용할 수 있어요.</p>
       <form id="auth-form"><label>이메일<input id="email" type="email" autocomplete="email" required></label><label>비밀번호<input id="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="actions"><button type="submit">로그인</button><button id="signup" class="secondary" type="button">계정 만들기</button></div></form>
+      <div id="verify-email" class="verification" hidden><p>인증 메일의 링크를 누른 뒤 돌아와 로그인해 주세요. 메일이 안 보이면 스팸함도 확인해 주세요.</p><button id="resend-email" class="secondary" type="button">인증 메일 다시 받기</button></div>
     </section>
     <div id="workspace" hidden>
       <div class="workspace-bar"><span id="account"></span><button id="logout" class="link" type="button">로그아웃</button></div>

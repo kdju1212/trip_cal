@@ -28,7 +28,11 @@
     const text = await response.text();
     let body = null;
     try { body = text ? JSON.parse(text) : null; } catch (_) { /* use generic failure */ }
-    if (!response.ok) throw new Error(body?.msg || body?.error_description || body?.message || '요청을 처리하지 못했어요. 다시 시도해 주세요.');
+    if (!response.ok) {
+      const error = new Error(body?.msg || body?.error_description || body?.message || '요청을 처리하지 못했어요. 다시 시도해 주세요.');
+      error.code = body?.error_code || body?.code;
+      throw error;
+    }
     return body;
   }
   function renderAuth() {
@@ -62,14 +66,21 @@
       const path = signup ? '/auth/v1/signup' : '/auth/v1/token?grant_type=password';
       const result = await request(path, {method: 'POST', headers: {...headers(), 'Content-Type': 'application/json'}, body: JSON.stringify({email, password})});
       $('password').value = '';
-      if (!result?.access_token || !result?.user) { message('가입 확인 메일을 확인한 뒤 로그인해 주세요.'); return; }
+      if (!result?.access_token || !result?.user) { show('verify-email', true); message('인증 메일이 도착하면 링크를 눌러 주세요.'); return; }
       state.session = result;
       const stored = window.TripSession.save(result, state.url);
       state.admin = false;
       renderAuth(); message('');
       await Promise.all([checkAdmin(), loadDrafts()]);
       if (!stored) message('브라우저에서 로그인 상태를 저장할 수 없어 화면 이동이 제한될 수 있어요.');
-    } catch (_) { message('로그인 또는 가입에 실패했어요. 입력 정보와 이메일 확인 여부를 확인해 주세요.'); }
+    } catch (error) {
+      if (error.code === 'email_not_confirmed') {
+        show('verify-email', true);
+        message('이메일 인증이 아직 완료되지 않았어요. 인증 메일을 확인해 주세요.');
+      } else {
+        message('로그인 또는 가입에 실패했어요. 입력 정보와 이메일 확인 여부를 확인해 주세요.');
+      }
+    }
   }
   async function checkAdmin() {
     if (!state.session) return;
@@ -100,6 +111,17 @@
   }
   $('auth-form').addEventListener('submit', event => { event.preventDefault(); authenticate(false); });
   $('signup').addEventListener('click', () => authenticate(true));
+  $('resend-email').addEventListener('click', async () => {
+    const email = $('email').value.trim();
+    if (!email || !$('email').validity.valid) { message('인증할 이메일 주소를 입력해 주세요.'); return; }
+    const button = $('resend-email'); button.disabled = true;
+    try {
+      await request('/auth/v1/resend', {method:'POST', headers:{...headers(), 'Content-Type':'application/json'}, body:JSON.stringify({type:'signup', email})});
+      message('인증 메일을 다시 요청했어요. 메일함을 확인해 주세요.');
+    } catch (_) {
+      message('인증 메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally { button.disabled = false; }
+  });
   $('logout').addEventListener('click', async () => {
     const token = state.session?.access_token;
     try { if (token) await request('/auth/v1/logout', {method: 'POST', headers: headers(true)}); } catch (_) { /* local logout still completes */ }
