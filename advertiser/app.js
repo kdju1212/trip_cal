@@ -227,7 +227,7 @@
     const table=document.createElement('table'); table.className='performance-table';
     const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
     const thead=document.createElement('thead'), header=document.createElement('tr');
-    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '목록 불러옴', '전체 클릭', '유효 후보', '자동 제외', '미검증', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
+    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '노출수', '클릭수', '유효 후보', '자동 제외', '미검증', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
     thead.append(header); table.append(thead);
     const body=document.createElement('tbody');
     for (const item of rows) {
@@ -241,17 +241,20 @@
         });
       }
       const detail=document.createElement('small'); detail.textContent=item.detail; nameCell.append(label,detail); row.append(nameCell);
-      const m=sums(item.drafts);
-      for (const value of [item.status || '—',m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),m.candidate.toLocaleString('ko-KR'),m.excluded.toLocaleString('ko-KR'),m.unverified.toLocaleString('ko-KR')]) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
-      const action=document.createElement('td'), edit=document.createElement('button');
-      edit.type='button'; edit.className='link'; edit.textContent='수정';
       const kind=state.performanceView, editId=item.editId || item.id;
-      edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit);
+      const stateCell=document.createElement('td'); stateCell.className='delivery-state';
       const switchWrap=document.createElement('span'); switchWrap.className='delivery-switch-wrap';
       const toggle=document.createElement('button'); toggle.type='button'; toggle.className='delivery-switch';
       toggle.setAttribute('role', 'switch'); toggle.setAttribute('aria-label', `${item.name} 광고 설정`); toggle.setAttribute('aria-checked', String(item.enabled));
       const switchLabel=document.createElement('span'); switchLabel.className='delivery-switch-label'; switchLabel.textContent=item.enabled ? '켜짐' : '꺼짐';
-      toggle.addEventListener('click', () => changeDelivery(kind,editId,!item.enabled,toggle)); switchWrap.append(toggle,switchLabel); action.append(switchWrap);
+      toggle.addEventListener('click', () => changeDelivery(kind,editId,!item.enabled,toggle)); switchWrap.append(toggle,switchLabel); stateCell.append(switchWrap);
+      if (item.status && item.status !== switchLabel.textContent) { const detail=document.createElement('small'); detail.textContent=item.status; stateCell.append(detail); }
+      row.append(stateCell);
+      const m=sums(item.drafts);
+      for (const value of [m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),m.candidate.toLocaleString('ko-KR'),m.excluded.toLocaleString('ko-KR'),m.unverified.toLocaleString('ko-KR')]) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
+      const action=document.createElement('td'), edit=document.createElement('button');
+      edit.type='button'; edit.className='link'; edit.textContent='수정';
+      edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit);
       const remove=document.createElement('button'); remove.type='button'; remove.className='link delete-action'; remove.textContent='삭제';
       remove.setAttribute('aria-label', `${item.name} 삭제`);
       remove.addEventListener('click', () => deleteItem(kind,editId,item.name,remove)); action.append(remove); row.append(action);
