@@ -183,7 +183,7 @@
     if (!state.session) return;
     const requestId = ++state.performanceRequest;
     const list = $('performance-list'); list.textContent = '성과를 불러오고 있어요.';
-    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—'; $('performance-candidate').textContent = '—'; $('performance-excluded').textContent = '—';
+    $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—';
     const owner = encodeURIComponent(state.session.user.id);
     try {
       const [campaigns, groups, drafts, metrics, delivery] = await Promise.all([
@@ -215,8 +215,6 @@
     const total = sums(visibleDrafts);
     $('performance-loaded').textContent = total.loaded.toLocaleString('ko-KR');
     $('performance-clicks').textContent = total.clicks.toLocaleString('ko-KR');
-    $('performance-candidate').textContent = total.candidate.toLocaleString('ko-KR');
-    $('performance-excluded').textContent = total.excluded.toLocaleString('ko-KR');
     $('performance-context').textContent = [state.performanceCampaign ? campaignNames.get(state.performanceCampaign) : '전체 캠페인', state.performanceGroup ? groups.get(state.performanceGroup)?.name : null].filter(Boolean).join('  ›  ');
     show('clear-performance-filter', !!state.performanceCampaign || !!state.performanceGroup);
     let rows;
@@ -227,7 +225,7 @@
     const table=document.createElement('table'); table.className='performance-table';
     const caption=document.createElement('caption'); caption.textContent='광고 성과 비교'; table.append(caption);
     const thead=document.createElement('thead'), header=document.createElement('tr');
-    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '노출수', '클릭수', '유효 후보', '자동 제외', '미검증', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
+    for (const label of [({campaign:'캠페인',group:'광고그룹',creative:'소재'})[state.performanceView], '상태', '노출수', '클릭수', '관리']) { const th=document.createElement('th'); th.scope='col'; th.textContent=label; header.append(th); }
     thead.append(header); table.append(thead);
     const body=document.createElement('tbody');
     for (const item of rows) {
@@ -251,7 +249,7 @@
       if (item.status && item.status !== switchLabel.textContent) { const detail=document.createElement('small'); detail.textContent=item.status; stateCell.append(detail); }
       row.append(stateCell);
       const m=sums(item.drafts);
-      for (const value of [m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR'),m.candidate.toLocaleString('ko-KR'),m.excluded.toLocaleString('ko-KR'),m.unverified.toLocaleString('ko-KR')]) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
+      for (const value of [m.loaded.toLocaleString('ko-KR'),m.clicks.toLocaleString('ko-KR')]) { const cell=document.createElement('td'); cell.textContent=value; row.append(cell); }
       const action=document.createElement('td'), edit=document.createElement('button');
       edit.type='button'; edit.className='link'; edit.textContent='수정';
       edit.addEventListener('click', () => openEditor(kind, editId)); action.append(edit);
