@@ -7,7 +7,7 @@
   <div id="admin-workspace" hidden><div class="workspace-bar"><span id="admin-account"></span><button id="admin-logout" class="link" type="button">로그아웃</button></div>
     <section class="panel mfa-panel" id="mfa-panel"><h2>관리자 2단계 인증</h2><p id="mfa-help">인증 상태를 확인하고 있어요.</p>
       <button id="mfa-setup" class="secondary" type="button" hidden>인증 앱 설정</button><button id="mfa-enforce" class="secondary" type="button" hidden>관리자 2단계 인증 필수로 설정</button><button id="mfa-challenge" class="secondary" type="button" hidden>인증번호 입력</button>
-      <div id="mfa-secret-section" hidden><p>인증 앱에서 계정을 추가하고 아래 설정 키를 직접 입력하세요. 이 키는 다른 사람에게 공유하지 마세요.</p><label>설정 키<input id="mfa-secret" readonly autocomplete="off"></label><button id="mfa-copy" type="button" class="link">키 복사</button></div>
+      <div id="mfa-secret-section" hidden><p>인증 앱에서 계정을 추가하고 아래 설정 키를 직접 입력하세요. 이 키는 다른 사람에게 공유하지 마세요. 휴대폰을 잃어버려도 인증 앱 계정을 복구할 수 있도록 인증 앱의 복구 방법을 먼저 확인하세요.</p><label>설정 키<input id="mfa-secret" readonly autocomplete="off"></label><button id="mfa-copy" type="button" class="link">키 복사</button></div>
       <form id="mfa-form" hidden><label>인증 앱의 6자리 번호<input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button id="mfa-verify" type="submit">인증 확인</button><button id="mfa-cancel" class="secondary" type="button">취소</button></form><p id="mfa-message" role="status" aria-live="polite"></p>
     </section>
     <div id="admin-operations" hidden>

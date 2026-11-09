@@ -232,9 +232,9 @@
       for (const entry of rows) {
         const row=document.createElement('div'); row.className='wallet-history-row';
         const info=document.createElement('div'), label=document.createElement('strong'), detail=document.createElement('small'), amount=document.createElement('strong');
-        label.textContent=({credit:'입금 충전',debit:'광고 클릭 차감',refund:'광고 클릭 환불'})[entry.kind] || '잔액 변동';
+        label.textContent=({credit:'입금 충전',debit:'광고 클릭 차감',refund:'광고 클릭 환불',credit_reversal:'충전 취소'})[entry.kind] || '잔액 변동';
         const date=new Date(entry.created_at); detail.textContent=Number.isNaN(date.getTime()) ? '' : date.toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
-        const value=Number(entry.amount_krw); amount.textContent=`${entry.kind === 'debit' ? '-' : '+'}${value.toLocaleString('ko-KR')}원`;
+        const value=Number(entry.amount_krw); amount.textContent=`${entry.kind === 'debit' || entry.kind === 'credit_reversal' ? '-' : '+'}${value.toLocaleString('ko-KR')}원`;
         info.append(label,detail); row.append(info,amount); list.append(row);
       }
     } catch (_) { list.textContent='내역을 불러오지 못했어요. 새로고침해 주세요.'; }
