@@ -8,9 +8,11 @@ const root = path.resolve(__dirname, '../advertiser');
 const source = name => fs.readFileSync(path.join(root, name), 'utf8');
 const wait = () => new Promise(resolve => setTimeout(resolve, 10));
 
-function browser(storage, role, loginError = false, fixtures = []) {
+function browser(storage, role, loginError = false, fixtures = [], billing = null, testOptions = {}) {
   const elements = new Map();
   const responses = [];
+  const mfaToken='header.'+Buffer.from(JSON.stringify({aal:'aal2'})).toString('base64url')+'.sig';
+  let factorVerified=!!testOptions.initialMfa;
   function el(id) {
     if (!elements.has(id)) elements.set(id, {
       id, hidden: true, textContent: '', value: '', disabled: false, files: [], validity: {valid:true},
@@ -23,7 +25,7 @@ function browser(storage, role, loginError = false, fixtures = []) {
   const sessionStorage = {getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)};
   const config = {url:'https://example.supabase.co',key:'sb_publishable_test'};
   const context = {
-    console, URL, URLSearchParams, Date, JSON, Map, Promise, setTimeout, clearTimeout,
+    console, URL, URLSearchParams, Date, JSON, Map, Promise, setTimeout, clearTimeout, atob:value=>Buffer.from(value,'base64').toString('binary'),
     location:{search:'', assign(value){responses.push({navigation:value});}},
     sessionStorage, localStorage:{getItem(){return null;},setItem(){}},
     document:{getElementById:el,querySelectorAll(){return [];},createElement(){return el('created-'+Math.random());}},
@@ -35,13 +37,20 @@ function browser(storage, role, loginError = false, fixtures = []) {
       if (u.pathname==='/auth/v1/token') body = {access_token:'token',expires_in:3600,user:{id:'user-1',email:'test@example.com'},refresh_token:'never-store'};
       else if (u.pathname==='/auth/v1/signup') body = {user:{id:'user-1',email:'test@example.com'}};
       else if (u.pathname==='/auth/v1/resend') body = {};
-      else if(u.pathname==='/auth/v1/user') body = {id:'user-1',email:'test@example.com'};
+      else if(u.pathname==='/auth/v1/user') body = {id:'user-1',email:'test@example.com',factors:factorVerified ? [{id:'factor-1',factor_type:'totp',status:'verified'}] : []};
+      else if(u.pathname==='/auth/v1/factors') body = {id:'factor-1',type:'totp',totp:{secret:'TESTONLYKEY'}};
+      else if(u.pathname==='/auth/v1/factors/factor-1' && options.method==='DELETE') body = {};
+      else if(u.pathname==='/auth/v1/factors/factor-1/challenge') body = {id:'challenge-1'};
+      else if(u.pathname==='/auth/v1/factors/factor-1/verify') { factorVerified=true; body={access_token:mfaToken,expires_in:3600,user:{id:'user-1',email:'test@example.com'}}; }
       else if(u.pathname==='/rest/v1/rpc/is_ad_admin') body = role;
       else if(u.pathname==='/rest/v1/advertiser_drafts') body = fixtures;
       else if(u.pathname==='/rest/v1/sim_ads') body = [];
+      else if(u.pathname==='/rest/v1/ad_campaigns' && options.method!=='POST' && testOptions.manyCampaigns) { const offset=Number(u.searchParams.get('offset') || 0); body=offset===0 ? Array.from({length:500},(_,i)=>({id:`campaign-${i}`,name:`캠페인 ${i}`})) : offset===500 ? [{id:'campaign-last',name:'마지막 캠페인'}] : []; }
       else if(u.pathname==='/rest/v1/ad_campaigns' && options.method==='POST') body = [{id:'campaign-1',name:JSON.parse(options.body).name}];
-      else if(u.pathname==='/rest/v1/rpc/ad_billing_enabled') body = false;
-      else if(u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs') body = [];
+      else if(u.pathname==='/rest/v1/rpc/ad_billing_enabled') body = billing !== null;
+      else if(u.pathname==='/rest/v1/rpc/admin_security_status') body = [{mfa_required:!!testOptions.requireMfa}];
+      else if(u.pathname==='/rest/v1/rpc/my_ad_costs_exact' && billing !== null) body = billing;
+      else if(u.pathname==='/rest/v1/ad_wallet_entries' || u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/rpc/list_ad_debits_for_refund' || u.pathname==='/rest/v1/rpc/list_ad_action_audit' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs_exact') body = [];
       else if(u.pathname==='/auth/v1/logout') body = {};
       else throw new Error('Unexpected request '+u.pathname);
       return {ok:true,status:200,text:async()=>JSON.stringify(body)};
@@ -156,4 +165,88 @@ test('소재 없이 새 캠페인을 따로 만들 수 있다', async () => {
   const created=b.responses.find(x=>x.path==='/rest/v1/ad_campaigns' && x.method==='POST');
   assert.deepEqual(JSON.parse(created.body),{name:'여름 여행',daily_budget_krw:10000});
   assert.ok(!b.responses.some(x=>x.path==='/rest/v1/advertiser_drafts' && x.method==='POST'));
+});
+
+test('관리자 인증 앱 설정은 코드 확인 후에만 2단계 인증된다', async () => {
+  const storage = new Map(), login = browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin = browser(storage,true);
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  assert.equal(admin.el('mfa-setup').hidden,false);
+  await admin.el('mfa-setup').listeners.click();
+  assert.equal(admin.el('mfa-secret').value,'TESTONLYKEY');
+  assert.equal(admin.el('mfa-form').hidden,false);
+  admin.el('mfa-code').value='123456';
+  await admin.el('mfa-form').listeners.submit({preventDefault(){}});
+  assert.match(admin.el('mfa-help').textContent,/완료/);
+  assert.equal(admin.el('mfa-secret').value,'');
+  assert.ok(![...storage.values()][0].includes('TESTONLYKEY'));
+  assert.ok(![...storage.values()][0].includes('123456'));
+  assert.ok(admin.responses.some(r=>r.path==='/auth/v1/factors/factor-1/challenge'));
+  assert.ok(admin.responses.some(r=>r.path==='/auth/v1/factors/factor-1/verify'));
+});
+
+test('미완료 관리자 인증 설정을 취소하면 키를 지우고 서버 설정을 제거한다', async () => {
+  const storage = new Map(), login = browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin = browser(storage,true);
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  await admin.el('mfa-setup').listeners.click();
+  assert.equal(admin.el('mfa-secret').value,'TESTONLYKEY');
+  await admin.el('mfa-cancel').listeners.click();
+  assert.equal(admin.el('mfa-secret').value,'');
+  assert.equal(admin.el('mfa-form').hidden,true);
+  assert.ok(admin.responses.some(r=>r.path==='/auth/v1/factors/factor-1' && r.method==='DELETE'));
+});
+
+test('큰 광고비를 정수 정밀도 손실 없이 표시한다', async () => {
+  const storage = new Map(), draft={id:'big-cost',title:'소재',country_code:'JP',sim_type:'sim',duration_days:3,review_status:'pending'};
+  const b = browser(storage,false,false,[draft],[{draft_id:'big-cost',cost_krw:'9007199254740993'}]);
+  vm.runInContext(source('app.js'),b.context);
+  b.el('email').value='test@example.com'; b.el('password').value='password123';
+  await b.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  assert.equal(b.el('performance-cost').textContent,'9,007,199,254,740,993원');
+});
+
+test('캠페인이 한 페이지보다 많으면 다음 페이지까지 읽는다', async () => {
+  const storage = new Map(), b = browser(storage,false,false,[],null,{manyCampaigns:true});
+  vm.runInContext(source('app.js'),b.context);
+  b.el('email').value='test@example.com'; b.el('password').value='password123';
+  await b.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  assert.ok(b.responses.some(r=>r.path==='/rest/v1/ad_campaigns' && r.search.includes('offset=0')));
+  assert.ok(b.responses.some(r=>r.path==='/rest/v1/ad_campaigns' && r.search.includes('offset=500')));
+});
+
+test('6자리가 아닌 관리자 인증번호는 서버에 보내지 않는다', async () => {
+  const storage = new Map(), login = browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin = browser(storage,true);
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  await admin.el('mfa-setup').listeners.click();
+  admin.el('mfa-code').value='123';
+  await admin.el('mfa-form').listeners.submit({preventDefault(){}});
+  assert.ok(!admin.responses.some(r=>r.path==='/auth/v1/factors/factor-1/challenge'));
+});
+
+test('관리자 2단계 인증이 필수면 인증 전에는 운영 데이터를 읽지 않는다', async () => {
+  const storage = new Map(), login = browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin = browser(storage,true,false,[],null,{requireMfa:true,initialMfa:true});
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  assert.equal(admin.el('admin-operations').hidden,true);
+  assert.equal(admin.el('mfa-challenge').hidden,false);
+  assert.ok(!admin.responses.some(r=>r.path==='/rest/v1/advertiser_drafts'));
+  admin.el('mfa-challenge').listeners.click();
+  admin.el('mfa-code').value='123456';
+  await admin.el('mfa-form').listeners.submit({preventDefault(){}});
+  assert.equal(admin.el('admin-operations').hidden,false);
+  assert.ok(admin.responses.some(r=>r.path==='/rest/v1/advertiser_drafts'));
 });

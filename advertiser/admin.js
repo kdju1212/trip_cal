@@ -2,7 +2,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   const config = window.ADVERTISER_CONFIG || {};
-  const state = {session: null, drafts: [], ads: [], filter: 'pending', busy: false, signed: new Map(), groups: [], campaigns: [], billingEnabled: false};
+  const state = {session: null, drafts: [], ads: [], filter: 'pending', busy: false, signed: new Map(), groups: [], campaigns: [], billingEnabled: false, mfaFactor: null, mfaPending: null, mfaAal: false, mfaRequired: null};
   const msg = value => { $('admin-message').textContent = value; };
   const headers = () => ({apikey: config.key, Authorization: `Bearer ${state.session.access_token}`});
   const node = (tag, text, className) => { const e = document.createElement(tag); if (text != null) e.textContent = text; if (className) e.className = className; return e; };
@@ -47,7 +47,7 @@
         $('unified-login').hidden = false;
         return;
       }
-      loggedIn(true); msg(''); await Promise.all([refresh(), loadWallets()]);
+      loggedIn(true); msg(''); renderMfa(user); await loadAdminSecurity();
     } catch (_) {
       state.session = null;
       $('admin-login-title').textContent = '로그인을 확인하지 못했어요';
@@ -57,7 +57,7 @@
   }
   $('admin-logout').addEventListener('click', async () => {
     try { await api('/auth/v1/logout?scope=local', {method:'POST', headers:headers()}); } catch (_) { /* clear local session even offline */ }
-    state.session = null; state.drafts = []; state.ads = []; state.signed.clear(); window.TripSession.clear();
+    state.session = null; state.drafts = []; state.ads = []; state.mfaFactor = null; state.mfaPending = null; state.mfaRequired = null; $('admin-operations').hidden=true; $('mfa-secret').value = ''; state.signed.clear(); window.TripSession.clear();
     window.location.assign('index.html');
   });
   async function refresh() {
@@ -76,24 +76,111 @@
       render();
     } catch (_) { $('review-list').replaceChildren(node('p','광고를 불러오지 못했어요. 서버 설정을 확인하고 다시 시도해 주세요.','empty')); }
   }
+  function readAal(token) {
+    try { const part=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'); return JSON.parse(atob(part.padEnd(Math.ceil(part.length/4)*4,'='))).aal === 'aal2'; } catch (_) { return false; }
+  }
+  function clearMfaForm() {
+    state.mfaPending=null; $('mfa-secret').value=''; $('mfa-code').value=''; $('mfa-secret-section').hidden=true; $('mfa-form').hidden=true;
+  }
+  function renderMfa(user) {
+    clearMfaForm();
+    state.mfaFactor=(user?.factors || []).find(f => f.factor_type === 'totp' && f.status === 'verified') || null;
+    state.mfaAal=readAal(state.session?.access_token || '');
+    $('mfa-setup').hidden=!!state.mfaFactor || state.mfaAal;
+    $('mfa-challenge').hidden=!state.mfaFactor || state.mfaAal;
+    applyAdminSecurity();
+    $('mfa-help').textContent=state.mfaAal ? '이 로그인에서 2단계 인증이 완료됐어요.' : state.mfaFactor ? '인증 앱의 번호를 입력하면 관리자 인증이 완료됩니다.' : '관리자 충전·환불을 위해 인증 앱을 설정해 주세요.';
+  }
+  function applyAdminSecurity() {
+    const allowed=state.mfaRequired === false || (state.mfaRequired === true && state.mfaAal);
+    $('admin-operations').hidden=!allowed;
+    $('mfa-enforce').hidden=!(state.mfaRequired === false && state.mfaAal && state.mfaFactor);
+  }
+  async function loadAdminSecurity() {
+    if (!state.session) return;
+    state.mfaRequired=null; applyAdminSecurity();
+    try {
+      const result=await api('/rest/v1/rpc/admin_security_status',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (!Array.isArray(result) || result.length!==1 || typeof result[0].mfa_required !== 'boolean') throw new Error('보안 상태 오류');
+      state.mfaRequired=result[0].mfa_required; applyAdminSecurity();
+      if (state.mfaRequired && !state.mfaAal) { $('mfa-message').textContent='관리자 업무를 보려면 2단계 인증을 완료해 주세요.'; return; }
+      await refresh(); await Promise.all([loadWallets(),loadRefunds(),loadAudit()]);
+    } catch (_) { state.mfaRequired=null; applyAdminSecurity(); $('mfa-message').textContent='관리자 보안 상태를 확인하지 못했어요. 새로고침해 주세요.'; }
+  }
+  $('mfa-enforce').addEventListener('click', async () => {
+    if (!state.session || !state.mfaAal || !state.mfaFactor || state.mfaRequired !== false) return;
+    if (!window.confirm('모든 관리자에게 2단계 인증을 필수로 적용할까요? 인증 앱을 잃으면 관리자 접근 복구가 필요할 수 있습니다.')) return;
+    const button=$('mfa-enforce'); button.disabled=true; $('mfa-message').textContent='보안 설정을 적용하고 있어요.';
+    try {
+      await api('/rest/v1/rpc/enable_admin_mfa_enforcement',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      await loadAdminSecurity(); $('mfa-message').textContent='관리자 2단계 인증을 필수로 설정했어요.';
+    } catch (_) { $('mfa-message').textContent='보안 설정을 적용하지 못했어요. 다시 인증한 뒤 시도해 주세요.'; }
+    finally { button.disabled=false; }
+  });
+  $('mfa-setup').addEventListener('click', async () => {
+    if (!state.session || state.mfaPending) return;
+    const button=$('mfa-setup'); button.disabled=true; $('mfa-message').textContent='설정 키를 준비하고 있어요.';
+    try {
+      const result=await api('/auth/v1/factors',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({factor_type:'totp',friendly_name:'여행 광고센터',issuer:'여행 준비 도우미'})});
+      if (!result?.id || !result?.totp?.secret || typeof result.totp.secret !== 'string') throw new Error('설정 정보를 확인하지 못했어요.');
+      state.mfaPending=result.id; $('mfa-secret').value=result.totp.secret; $('mfa-secret-section').hidden=false; $('mfa-form').hidden=false; button.hidden=true; $('mfa-message').textContent='';
+    } catch (_) { $('mfa-message').textContent='인증 앱 설정을 시작하지 못했어요. 서버 설정을 확인해 주세요.'; }
+    finally { button.disabled=false; }
+  });
+  $('mfa-challenge').addEventListener('click', () => {
+    if (!state.mfaFactor) return;
+    state.mfaPending=state.mfaFactor.id; $('mfa-secret-section').hidden=true; $('mfa-form').hidden=false; $('mfa-challenge').hidden=true; $('mfa-message').textContent='';
+  });
+  $('mfa-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('mfa-secret').value); $('mfa-message').textContent='설정 키를 복사했어요. 인증 앱에만 붙여 넣어 주세요.'; }
+    catch (_) { $('mfa-message').textContent='설정 키를 직접 길게 눌러 복사해 주세요.'; }
+  });
+  $('mfa-cancel').addEventListener('click', async () => {
+    // Unverified setup is removed only when the user explicitly cancels it.
+    const pending=state.mfaPending; const enrolling=!state.mfaFactor && !!pending;
+    if (enrolling) {
+      try { await api(`/auth/v1/factors/${encodeURIComponent(pending)}`,{method:'DELETE',headers:headers()}); }
+      catch (_) { $('mfa-message').textContent='설정 취소를 완료하지 못했어요. 다시 시도해 주세요.'; return; }
+    }
+    renderMfa(state.session?.user); $('mfa-message').textContent='';
+  });
+  $('mfa-form').addEventListener('submit', async event => {
+    event.preventDefault(); const factor=state.mfaPending, code=$('mfa-code').value.trim();
+    if (!state.session || !factor || !/^[0-9]{6}$/.test(code) || $('mfa-verify').disabled) return;
+    const button=$('mfa-verify'); button.disabled=true; $('mfa-message').textContent='인증하고 있어요.';
+    try {
+      const challenge=await api(`/auth/v1/factors/${encodeURIComponent(factor)}/challenge`,{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (!challenge?.id) throw new Error('인증 요청 실패');
+      const result=await api(`/auth/v1/factors/${encodeURIComponent(factor)}/verify`,{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({challenge_id:challenge.id,code})});
+      if (!result?.access_token || !readAal(result.access_token)) throw new Error('2단계 인증 확인 실패');
+      const previousUser=state.session.user; state.session={...result,user:result.user || previousUser};
+      const stored=window.TripSession.save(state.session,config.url.replace(/\/$/,''));
+      let user=state.session.user;
+      try { user=await api('/auth/v1/user',{headers:headers()}); state.session.user=user; window.TripSession.save(state.session,config.url.replace(/\/$/,'')); } catch (_) { /* authentication succeeded; refresh the profile later */ }
+      renderMfa(user); await loadAdminSecurity(); $('mfa-message').textContent=stored ? '2단계 인증을 완료했어요.' : '인증은 완료됐지만 브라우저에 로그인 상태를 저장할 수 없어 화면 이동 시 다시 로그인해야 해요.';
+    } catch (_) { $('mfa-code').value=''; $('mfa-message').textContent='인증번호를 확인하고 다시 시도해 주세요.'; }
+    finally { button.disabled=false; }
+  });
   async function loadWallets() {
     if (!state.session) return;
     const help=$('wallet-help'), message=$('wallet-message');
     for (const id of ['wallet-owner','wallet-amount','wallet-reference','wallet-submit']) $(id).disabled=true;
     help.textContent='잔액 정보를 불러오고 있어요.'; message.textContent='';
     try {
-      const [enabled, wallets]=await Promise.all([
-        api('/rest/v1/rpc/ad_billing_enabled',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'}),
-        api('/rest/v1/rpc/list_advertiser_wallets',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'}),
-      ]);
-      if (typeof enabled !== 'boolean' || !Array.isArray(wallets)) throw new Error('잔액 정보를 확인할 수 없어요.');
+      const enabled=await api('/rest/v1/rpc/ad_billing_enabled',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (typeof enabled !== 'boolean') throw new Error('과금 상태를 확인할 수 없어요.');
       state.billingEnabled=enabled;
+      if (!enabled) { help.textContent='유료 과금 준비 중입니다. 입금을 받거나 잔액을 충전할 수 없어요.'; return; }
+      if (!state.mfaAal) { help.textContent='잔액 확인과 충전에는 관리자 2단계 인증이 필요해요.'; return; }
+      const wallets=await api('/rest/v1/rpc/list_advertiser_wallets',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (!Array.isArray(wallets)) throw new Error('잔액 정보를 확인할 수 없어요.');
       const select=$('wallet-owner'), previous=select.value; select.replaceChildren();
       const empty=node('option','광고주 선택'); empty.value=''; select.append(empty);
       for (const wallet of wallets) { const option=node('option',`${wallet.email || '계정'} · 잔액 ${Number(wallet.balance_krw).toLocaleString('ko-KR')}원`); option.value=wallet.owner_id; select.append(option); }
       if (wallets.some(w=>w.owner_id===previous)) select.value=previous;
       help.textContent=enabled ? '입금을 확인한 후 거래 고유번호로 충전하세요.' : '유료 과금 준비 중입니다. 입금을 받거나 잔액을 충전할 수 없어요.';
-      for (const id of ['wallet-owner','wallet-amount','wallet-reference','wallet-submit']) $(id).disabled=!enabled;
+      for (const id of ['wallet-owner','wallet-amount','wallet-reference','wallet-submit']) $(id).disabled=!(enabled && state.mfaAal);
+      if (enabled && !state.mfaAal) help.textContent='충전하려면 관리자 2단계 인증이 필요해요.';
     } catch (_) { state.billingEnabled=false; help.textContent='잔액 정보를 불러오지 못했어요. 새로고침해 주세요.'; }
   }
   async function receiptKey(value) {
@@ -105,18 +192,78 @@
   $('wallet-refresh').addEventListener('click', loadWallets);
   $('wallet-form').addEventListener('submit', async event => {
     event.preventDefault();
-    if (!state.session || !state.billingEnabled || $('wallet-submit').disabled) return;
+    if (!state.session || !state.billingEnabled || !state.mfaAal || $('wallet-submit').disabled) return;
     const owner=$('wallet-owner').value, amount=Number($('wallet-amount').value), receipt=$('wallet-reference').value.trim();
     if (!owner || !Number.isSafeInteger(amount) || amount<1 || amount>1000000000 || receipt.length<3 || receipt.length>80) { $('wallet-message').textContent='광고주, 금액과 입금 거래 고유번호를 확인해 주세요.'; return; }
-    if (!window.confirm(`입금 확인 후 ${amount.toLocaleString('ko-KR')}원을 이 광고주에게 충전할까요?`)) return;
+    const recipient=$('wallet-owner').selectedOptions?.[0]?.textContent || '선택한 광고주';
+    if (!window.confirm(`광고주: ${recipient}\n거래 번호: ${receipt}\n입금 확인 금액: ${amount.toLocaleString('ko-KR')}원\n\n확인한 입금을 충전할까요?`)) return;
     const button=$('wallet-submit'); button.disabled=true; $('wallet-message').textContent='충전 중이에요.';
     try {
       const reference=await receiptKey(receipt);
       await api('/rest/v1/rpc/confirm_manual_ad_topup',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({p_owner:owner,p_amount:amount,p_reference:reference,p_note:receipt})});
       $('wallet-form').reset(); await loadWallets(); $('wallet-message').textContent='입금을 확인하고 충전했어요.';
     } catch (_) { $('wallet-message').textContent='충전 결과를 확인하지 못했어요. 같은 거래 번호를 유지하고 잔액을 확인해 주세요.'; }
-    finally { button.disabled=!state.billingEnabled; }
+    finally { button.disabled=!(state.billingEnabled && state.mfaAal); }
   });
+  async function loadAudit() {
+    const list=$('audit-list');
+    if (!state.session || !state.mfaAal) { list.textContent='관리자 2단계 인증 후 확인할 수 있어요.'; return; }
+    list.textContent='변경 이력을 불러오고 있어요.';
+    try {
+      const rows=await api('/rest/v1/rpc/list_ad_action_audit',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (!Array.isArray(rows)) throw new Error('invalid response');
+      list.replaceChildren();
+      if (!rows.length) { list.textContent='아직 기록된 변경 이력이 없어요.'; return; }
+      const kinds={ad_campaigns:'캠페인',ad_groups:'광고그룹',advertiser_drafts:'소재',sim_ads:'앱 광고',ad_security_settings:'관리자 보안'};
+      const actions={admin_mfa_required:'2단계 인증 필수 설정',created:'생성',review_status:'검수 상태 변경',advertiser_enabled:'켜기·끄기 변경',deleted_at:'삭제',is_active:'노출 상태 변경',daily_budget_krw:'일 예산 변경',cpc_bid_krw:'입찰가 변경',price_krw:'상품 가격 변경',name:'이름 변경',merchant_name:'업체명 변경',title:'제목 변경',description:'설명 변경',purchase_url:'구매 링크 변경',image_path:'이미지 변경',sim_type:'유심 종류 변경',country_code:'국가 변경',duration_days:'사용 일수 변경'};
+      for (const entry of rows) {
+        const item=entry.entity_kind === 'ad_campaigns' ? state.campaigns.find(x=>x.id===entry.entity_id)?.name : entry.entity_kind === 'ad_groups' ? state.groups.find(x=>x.id===entry.entity_id)?.name : entry.entity_kind === 'advertiser_drafts' ? state.drafts.find(x=>x.id===entry.entity_id)?.title : entry.entity_kind === 'sim_ads' ? state.drafts.find(x=>String(x.published_ad_id)===entry.entity_id)?.title : '';
+        const name=item || (entry.entity_kind === 'ad_security_settings' ? '전체 관리자' : `항목 ${String(entry.entity_id || '').slice(0,8)}`);
+        const row=node('div',null,'audit-row'), title=node('strong',`${kinds[entry.entity_kind] || '광고'} · ${name} · ${actions[entry.action] || '변경'}`);
+        const when=new Date(entry.created_at); const date=Number.isNaN(when.getTime()) ? '' : when.toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
+        const meta=node('small',[entry.actor_email || '시스템',date].filter(Boolean).join(' · ')); row.append(title,meta);
+        if (['daily_budget_krw','cpc_bid_krw','price_krw'].includes(entry.action)) {
+          const fmt=value => value == null ? '미설정' : `${Number(value).toLocaleString('ko-KR')}원`;
+          row.append(node('small',`${fmt(entry.detail?.before)} → ${fmt(entry.detail?.after)}`));
+        }
+        list.append(row);
+      }
+    } catch (_) { list.textContent='이력을 불러오지 못했어요. 인증과 연결 상태를 확인해 주세요.'; }
+  }
+  $('audit-refresh').addEventListener('click',loadAudit);
+  async function loadRefunds() {
+    const list=$('refund-list');
+    if (!state.session || !state.mfaAal) { list.textContent='관리자 2단계 인증 후 확인할 수 있어요.'; return; }
+    list.textContent='차감 내역을 불러오고 있어요.';
+    try {
+      const rows=await api('/rest/v1/rpc/list_ad_debits_for_refund',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (!Array.isArray(rows)) throw new Error('invalid response');
+      list.replaceChildren();
+      if (!rows.length) { list.textContent='환불할 차감 내역이 없어요.'; return; }
+      for (const entry of rows) {
+        const row=node('div',null,'refund-row'), content=node('div'), name=node('strong',entry.ad_title || '광고 클릭'), detail=node('small',`${entry.email || '광고주'} · ${entry.campaign || '캠페인'} · ${Number(entry.amount_krw).toLocaleString('ko-KR')}원`);
+        content.append(name,detail); row.append(content);
+        if (entry.refunded) row.append(node('span','환불 완료','status-note'));
+        else { const button=node('button','환불','secondary'); button.type='button'; button.addEventListener('click',()=>refundClick(entry,button)); row.append(button); }
+        list.append(row);
+      }
+    } catch (_) { list.textContent='차감 내역을 불러오지 못했어요. 인증과 연결 상태를 확인해 주세요.'; }
+  }
+  async function refundClick(entry,button) {
+    if (!state.session || !state.mfaAal || button.disabled) return;
+    const reason=window.prompt('환불 사유를 3자 이상 입력해 주세요.');
+    if (reason === null) return;
+    if (reason.trim().length<3 || reason.trim().length>100) { $('refund-message').textContent='환불 사유는 3~100자로 입력해 주세요.'; return; }
+    if (!window.confirm(`광고주: ${entry.email || '계정'}\n소재: ${entry.ad_title || '광고 클릭'}\n환불 금액: ${Number(entry.amount_krw).toLocaleString('ko-KR')}원\n\n이 차감 내역을 환불할까요?`)) return;
+    button.disabled=true; $('refund-message').textContent='환불 처리 중이에요.';
+    try {
+      const result=await api('/rest/v1/rpc/refund_ad_click',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({p_debit_id:entry.debit_id,p_reason:reason.trim()})});
+      $('refund-message').textContent=result==='already_refunded' ? '이미 환불된 클릭입니다.' : '환불을 기록하고 잔액에 반영했어요.';
+      await Promise.all([loadRefunds(),loadWallets()]);
+    } catch (_) { $('refund-message').textContent='환불 결과를 확인하지 못했어요. 목록을 새로고침하고 다시 확인해 주세요.'; }
+    finally { button.disabled=false; }
+  }
+  $('refund-refresh').addEventListener('click',loadRefunds);
   $('admin-refresh').addEventListener('click', refresh);
   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
     state.filter = button.dataset.filter;
@@ -176,9 +323,10 @@
     let publicPath=null;
     try {
       if (approve) {
+        if (!secureUrl(draft.purchase_url)) throw new Error('구매 링크가 올바른 https 주소인지 확인해 주세요.');
         const imageUrl=await signedImage(draft.image_path), response=await fetch(imageUrl);
         if (!response.ok) throw new Error('검수 이미지를 불러오지 못했어요.');
-        const blob=await response.blob(); if(!['image/jpeg','image/png','image/webp'].includes(blob.type) || blob.size>3145728) throw new Error('이미지 형식 또는 크기를 확인해 주세요.');
+        const blob=await response.blob(); if(!['image/jpeg','image/png','image/webp'].includes(blob.type) || blob.size>3145728 || !(await window.TripImageRatio.isSquare(blob))) throw new Error('이미지는 3MB 이하의 1:1 정사각형 JPG, PNG, WEBP 파일이어야 합니다.');
         const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[blob.type]; publicPath=`${draft.id}/${crypto.randomUUID()}.${ext}`;
         await api(`/storage/v1/object/ad-published-images/${publicPath}`,{method:'POST',headers:{...headers(),'Content-Type':blob.type,'x-upsert':'false'},body:blob});
       }

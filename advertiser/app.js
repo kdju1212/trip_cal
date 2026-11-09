@@ -35,6 +35,18 @@
     }
     return body;
   }
+  async function requestAll(path, options = {}) {
+    const rows=[]; const pageSize=500; const maxRows=10000;
+    for (let offset=0; offset<=maxRows; offset+=pageSize) {
+      const join=path.includes('?') ? '&' : '?';
+      const page=await request(`${path}${join}limit=${pageSize}&offset=${offset}`, options);
+      if (!Array.isArray(page)) throw new Error('목록 응답을 확인하지 못했어요.');
+      rows.push(...page);
+      if (page.length<pageSize) return rows;
+      if (rows.length>=maxRows) throw new Error('목록이 너무 많아 모두 불러오지 못했어요.');
+    }
+    throw new Error('목록을 모두 불러오지 못했어요.');
+  }
   function renderAuth() {
     if (demo) {
       show('config-panel', false); show('auth-panel', false); show('workspace', true); show('logout', false);
@@ -128,7 +140,7 @@
   $('logout').addEventListener('click', async () => {
     const token = state.session?.access_token;
     try { if (token) await request('/auth/v1/logout', {method: 'POST', headers: headers(true)}); } catch (_) { /* local logout still completes */ }
-    state.session = null; state.admin = false; state.view = 'dashboard'; state.campaigns = []; state.groups = []; state.performance = null; window.TripSession.clear(); $('ad-form').reset(); $('image').setCustomValidity('');
+    state.session = null; state.admin = false; state.view = 'dashboard'; state.campaigns = []; state.groups = []; state.performance = null; show('wallet-history-panel',false); $('wallet-history').replaceChildren(); window.TripSession.clear(); $('ad-form').reset(); $('image').setCustomValidity('');
     if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = null; $('preview-image').removeAttribute('src'); show('preview-image', false); show('image-placeholder', true);
     updatePreview(); renderAuth(); message('로그아웃했어요.');
@@ -167,8 +179,8 @@
   async function loadHierarchy() {
     try {
       const [campaigns, groups] = await Promise.all([
-        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)}),
-        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc`, {headers: headers(true)})
+        requestAll(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc,id.desc`, {headers: headers(true)}),
+        requestAll(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${encodeURIComponent(state.session.user.id)}&order=created_at.desc,id.desc`, {headers: headers(true)})
       ]);
       state.campaigns = campaigns; state.groups = groups;
       fillOptions('campaign-select', campaigns, '새 캠페인 만들기'); updateCampaignSelection(); return true;
@@ -183,39 +195,63 @@
     if (!state.session) return;
     const requestId = ++state.performanceRequest;
     const list = $('performance-list'); list.textContent = '성과를 불러오고 있어요.';
+    show('wallet-history-panel',false); $('wallet-history').replaceChildren();
     $('performance-loaded').textContent = '—'; $('performance-clicks').textContent = '—'; $('performance-cost').textContent = '—'; $('performance-balance').textContent = '—';
     const owner = encodeURIComponent(state.session.user.id);
     try {
       const [campaigns, groups, drafts, metrics, delivery, costs, billingEnabled, wallets] = await Promise.all([
-        request(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc`, {headers:headers(true)}),
-        request('/rest/v1/rpc/my_ad_performance_breakdown', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
-        request('/rest/v1/rpc/my_ad_delivery', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'}),
-        request('/rest/v1/rpc/my_ad_costs', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
+        requestAll(`/rest/v1/ad_campaigns?select=id,name,daily_budget_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc,id.desc`, {headers:headers(true)}),
+        requestAll(`/rest/v1/ad_groups?select=id,campaign_id,name,sim_type,country_code,duration_days,cpc_bid_krw,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc,id.desc`, {headers:headers(true)}),
+        requestAll(`/rest/v1/advertiser_drafts?select=id,group_id,title,merchant_name,description,price_krw,purchase_url,review_status,advertiser_enabled&deleted_at=is.null&owner_id=eq.${owner}&order=created_at.desc,id.desc`, {headers:headers(true)}),
+        requestAll('/rest/v1/rpc/my_ad_performance_breakdown?order=draft_id.asc', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
+        requestAll('/rest/v1/rpc/my_ad_delivery?order=draft_id.asc', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'}),
+        requestAll('/rest/v1/rpc/my_ad_costs_exact?order=draft_id.asc', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:JSON.stringify({p_days:Number($('performance-period').value || 30)})}),
         request('/rest/v1/rpc/ad_billing_enabled', {method:'POST',headers:{...headers(true),'Content-Type':'application/json'},body:'{}'}),
         request(`/rest/v1/ad_wallets?select=balance_krw&owner_id=eq.${owner}`, {headers:headers(true)})
       ]);
       if (requestId !== state.performanceRequest || !state.session) return;
       if (![campaigns, groups, drafts, metrics, delivery, costs, wallets].every(Array.isArray) || typeof billingEnabled !== 'boolean') throw new Error('Invalid response');
+      if (billingEnabled && (costs.some(c => typeof c.cost_krw !== 'string' || !/^-?\d+$/.test(c.cost_krw)) || drafts.some(d => !costs.some(c => c.draft_id === d.id)))) throw new Error('비용 내역을 모두 확인하지 못했어요.');
       state.performance = {campaigns, groups, drafts, metrics, delivery, costs, billingEnabled, wallets}; renderPerformance();
+      show('wallet-history-panel', billingEnabled);
+      if (billingEnabled) await loadWalletHistory();
     } catch (_) {
       if (requestId !== state.performanceRequest) return;
       state.performance = null; list.textContent = '성과를 불러오지 못했어요. 새로고침을 눌러 주세요.';
     }
   }
+  async function loadWalletHistory() {
+    if (!state.session || !state.performance?.billingEnabled) return;
+    const owner=state.session.user.id, list=$('wallet-history'); list.textContent='내역을 불러오고 있어요.';
+    try {
+      const rows=await request(`/rest/v1/ad_wallet_entries?select=kind,amount_krw,note,created_at&owner_id=eq.${encodeURIComponent(owner)}&order=created_at.desc&limit=50`,{headers:headers(true)});
+      if (!state.session || state.session.user.id !== owner) return;
+      if (!Array.isArray(rows)) throw new Error('invalid response');
+      list.replaceChildren();
+      if (!rows.length) { list.textContent='아직 잔액 변동 내역이 없어요.'; return; }
+      for (const entry of rows) {
+        const row=document.createElement('div'); row.className='wallet-history-row';
+        const info=document.createElement('div'), label=document.createElement('strong'), detail=document.createElement('small'), amount=document.createElement('strong');
+        label.textContent=({credit:'입금 충전',debit:'광고 클릭 차감',refund:'광고 클릭 환불'})[entry.kind] || '잔액 변동';
+        const date=new Date(entry.created_at); detail.textContent=Number.isNaN(date.getTime()) ? '' : date.toLocaleString('ko-KR',{timeZone:'Asia/Seoul'});
+        const value=Number(entry.amount_krw); amount.textContent=`${entry.kind === 'debit' ? '-' : '+'}${value.toLocaleString('ko-KR')}원`;
+        info.append(label,detail); row.append(info,amount); list.append(row);
+      }
+    } catch (_) { list.textContent='내역을 불러오지 못했어요. 새로고침해 주세요.'; }
+  }
+  $('wallet-history-refresh').addEventListener('click',loadWalletHistory);
   function renderPerformance() {
     const list = $('performance-list'), data = state.performance;
     if (!data) return;
     list.replaceChildren();
     const metrics = new Map(data.metrics.map(m => [m.draft_id, m]));
-    const costs = new Map(data.costs.map(c => [c.draft_id, c.cost_krw]));
+    const costs = new Map(data.costs.map(c => [c.draft_id, typeof c.cost_krw === 'string' && /^-?\d+$/.test(c.cost_krw) ? BigInt(c.cost_krw) : 0n]));
     const groups = new Map(data.groups.map(g => [g.id,g]));
     const campaignNames = new Map(data.campaigns.map(c => [c.id,c.name]));
     const campaigns = new Map(data.campaigns.map(c => [c.id,c]));
     const delivery = new Map(data.delivery.map(d => [d.draft_id,d.admin_active]));
     const visibleDrafts = data.drafts.filter(d => (!state.performanceCampaign || groups.get(d.group_id)?.campaign_id === state.performanceCampaign) && (!state.performanceGroup || d.group_id === state.performanceGroup));
-    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); total.candidate+=Number(m?.candidate || 0); total.excluded+=Number(m?.excluded || 0); total.unverified+=Number(m?.unverified || 0); total.cost+=Number(costs.get(d.id) || 0); return total; }, {loaded:0,clicks:0,candidate:0,excluded:0,unverified:0,cost:0});
+    const sums = drafts => drafts.reduce((total,d) => { const m=metrics.get(d.id); total.loaded+=Number(m?.loaded || 0); total.clicks+=Number(m?.clicks || 0); total.candidate+=Number(m?.candidate || 0); total.excluded+=Number(m?.excluded || 0); total.unverified+=Number(m?.unverified || 0); total.cost+=costs.get(d.id) ?? 0n; return total; }, {loaded:0,clicks:0,candidate:0,excluded:0,unverified:0,cost:0n});
     const total = sums(visibleDrafts);
     $('performance-loaded').textContent = total.loaded.toLocaleString('ko-KR');
     $('performance-clicks').textContent = total.clicks.toLocaleString('ko-KR');
