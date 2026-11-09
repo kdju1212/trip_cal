@@ -48,6 +48,7 @@ function browser(storage, role, loginError = false, fixtures = [], billing = nul
       else if(u.pathname==='/rest/v1/ad_campaigns' && options.method!=='POST' && testOptions.manyCampaigns) { const offset=Number(u.searchParams.get('offset') || 0); body=offset===0 ? Array.from({length:500},(_,i)=>({id:`campaign-${i}`,name:`캠페인 ${i}`})) : offset===500 ? [{id:'campaign-last',name:'마지막 캠페인'}] : []; }
       else if(u.pathname==='/rest/v1/ad_campaigns' && options.method==='POST') body = [{id:'campaign-1',name:JSON.parse(options.body).name}];
       else if(u.pathname==='/rest/v1/rpc/ad_billing_enabled') body = billing !== null;
+      else if(u.pathname==='/rest/v1/rpc/admin_security_status' && testOptions.failSecurity) return {ok:false,status:503,text:async()=>JSON.stringify({message:'unavailable'})};
       else if(u.pathname==='/rest/v1/rpc/admin_security_status') body = [{mfa_required:!!testOptions.requireMfa}];
       else if(u.pathname==='/rest/v1/rpc/my_ad_costs_exact' && billing !== null) body = billing;
       else if(u.pathname==='/rest/v1/ad_wallet_entries' || u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/rpc/list_ad_debits_for_refund' || u.pathname==='/rest/v1/rpc/list_ad_action_audit' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs_exact') body = [];
@@ -249,4 +250,25 @@ test('관리자 2단계 인증이 필수면 인증 전에는 운영 데이터를
   await admin.el('mfa-form').listeners.submit({preventDefault(){}});
   assert.equal(admin.el('admin-operations').hidden,false);
   assert.ok(admin.responses.some(r=>r.path==='/rest/v1/advertiser_drafts'));
+});
+
+test('관리자 보안 설정을 확인할 수 없으면 업무 화면을 열지 않는다', async () => {
+  const storage = new Map(), login = browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin=browser(storage,true,false,[],null,{failSecurity:true});
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  assert.equal(admin.el('admin-operations').hidden,true);
+  assert.ok(!admin.responses.some(r=>r.path==='/rest/v1/advertiser_drafts'));
+});
+test('2단계 인증이 없는 관리자는 다른 광고주 잔액을 요청하지 않는다', async () => {
+  const storage = new Map(), login = browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin=browser(storage,true,false,[],[]);
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  assert.ok(!admin.responses.some(r=>r.path==='/rest/v1/rpc/list_advertiser_wallets'));
+  assert.equal(admin.el('wallet-submit').disabled,true);
 });
