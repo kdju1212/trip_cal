@@ -257,8 +257,7 @@ class _HomeState extends State<Home> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Row(children: [
-                              Expanded(child: Wrap(
+                            Wrap(
                               spacing: 8,
                               runSpacing: 4,
                               children: [
@@ -276,17 +275,10 @@ class _HomeState extends State<Home> {
                                   ),
                                 ),
                               ],
-                            )),
-                              const Text('고정알림'),
-                              Switch(
-                                value: notificationEnabled && featured?['id'] == t['id'],
-                                onChanged: notificationBusy || !widget.app.notifications.supported
-                                    ? null
-                                    : (value) => setTripNotification(t, value),
-                              ),
-                            ]),
+                            ),
                             const SizedBox(height: 12),
-                            Text(
+                            Row(children: [
+                              Expanded(child: Text(
                               remaining.isNegative
                                   ? '예산 초과 ${formatWon(remaining.abs())}'
                                   : '남은 예산 ${formatWon(remaining)}',
@@ -296,7 +288,15 @@ class _HomeState extends State<Home> {
                                     ? Theme.of(context).colorScheme.error
                                     : Theme.of(context).colorScheme.primary,
                               ),
-                            ),
+                            )),
+                              const Text('고정알림'),
+                              Switch(
+                                value: notificationEnabled && featured?['id'] == t['id'],
+                                onChanged: notificationBusy || !widget.app.notifications.supported
+                                    ? null
+                                    : (value) => setTripNotification(t, value),
+                              ),
+                            ]),
                           ],
                         ),
                       ),
