@@ -105,8 +105,11 @@ class _HomeState extends State<Home> {
       await widget.app.notifications.sync();
       if (mounted) {
         reload();
-        if (value) showSettingsTip();
-        else hideSettingsTip();
+        if (value) {
+          showSettingsTip();
+        } else {
+          hideSettingsTip();
+        }
       }
     });
     if (mounted) setState(() => notificationBusy = false);
