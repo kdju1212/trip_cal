@@ -1,0 +1,28 @@
+{
+  "app": "여행 준비 도우미",
+  "version": "1.0.0+1",
+  "source_commit": "af77192be8bd3fbb87a52c8943af0396c8fb20d4",
+  "workflow_run": "https://github.com/kdju1212/trip_cal/actions/runs/41843432137",
+  "tests_passed": 25,
+  "analysis": "No issues found",
+  "apk": "trip-cal-fixed-arm64.apk",
+  "apk_bytes": 27450799,
+  "apk_sha256": "4a0083fe1bc0ad1c6f67ccf2cc6ed2f46f4469d5e6561a0b0590c828f818664a",
+  "signing": "debug key, testing only",
+  "ads": "Google test IDs, UMP-gated",
+  "android_emulator": "Android 15 release startup passed; Android 17 emulator setup was inconclusive",
+  "release_shrinking": "disabled to retain WorkManager Room constructors",
+  "real_device": "User reported the fixed APK opens on Galaxy S26 running Android 17",
+  "expense_batch_preview": {
+    "source_commit": "005958c35d012fdee897c2035b8056863214c0cb",
+    "workflow_run": "https://github.com/kdju1212/trip_cal/actions/runs/42018215637",
+    "android_package": "com.tripcal.app.preview",
+    "app_label": "여행 준비 도우미 (새 버전)",
+    "apk": "build/app/outputs/flutter-apk/trip-cal-preview-arm64.apk",
+    "bytes": 27516355,
+    "sha256": "db250b45c811b8b59971025dbb9de57e2e05a48a7b23b948b15278c99845db3f",
+    "automated_tests": 29,
+    "data": "Separate app storage; existing app data is not modified or copied.",
+    "android_emulator": "Android 15: existing and preview apps both install and reach home screen"
+  }
+}
