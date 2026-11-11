@@ -12,6 +12,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool enabled = false, remaining = true, busy = false, loaded = false;
+  bool showName = true, showDday = true;
+  String emoji = '✈️';
+  final customText = TextEditingController();
   int selected = 0;
   List<DbRow> trips = [];
   @override
@@ -26,6 +29,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final e = await s.setting('notificationEnabled', false);
       final r = await s.setting('notificationRemaining', true);
       final t = await s.setting('notificationTrip', 0);
+      final name = await s.setting('notificationShowName', true);
+      final dday = await s.setting('notificationShowDday', true);
+      final text = await s.setting('notificationCustomText', '');
+      final savedEmoji = await s.setting('notificationEmoji', '✈️');
       final list = (await s.trips())
           .where((v) => notificationEligible(v, DateTime.now()))
           .toList();
@@ -34,6 +41,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           enabled = e;
           remaining = r;
           selected = list.any((e) => e['id'] == t) ? t : 0;
+          showName = name;
+          showDday = dday;
+          emoji = ['✈️', '🧳', '🌴', '🌏'].contains(savedEmoji) ? savedEmoji : '✈️';
+          customText.text = text;
           trips = list;
           loaded = true;
         });
@@ -43,6 +54,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         message(context, '설정을 불러오지 못했어요.');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    customText.dispose();
+    super.dispose();
   }
 
   Future<void> saveNotification(bool value) async {
@@ -61,6 +78,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await widget.app.store.setSetting('notificationEnabled', value);
       await widget.app.store.setSetting('notificationTrip', selected);
       await widget.app.store.setSetting('notificationRemaining', remaining);
+      await widget.app.store.setSetting('notificationShowName', showName);
+      await widget.app.store.setSetting('notificationShowDday', showDday);
+      await widget.app.store.setSetting('notificationCustomText', customText.text.trim());
+      await widget.app.store.setSetting('notificationEmoji', emoji);
       await widget.app.notifications.sync();
       if (mounted) {
         setState(() => enabled = value);
@@ -75,6 +96,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await guarded(context, () async {
       await widget.app.store.setSetting('notificationTrip', selected);
       await widget.app.store.setSetting('notificationRemaining', remaining);
+      await widget.app.store.setSetting('notificationShowName', showName);
+      await widget.app.store.setSetting('notificationShowDday', showDday);
+      await widget.app.store.setSetting('notificationCustomText', customText.text.trim());
+      await widget.app.store.setSetting('notificationEmoji', emoji);
       await widget.app.notifications.sync();
     });
   }
@@ -162,6 +187,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         notificationOptions();
                       },
               ),
+              const SectionTitle('고정알림 꾸미기'),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('여행 이름 표시'),
+                value: showName,
+                onChanged: (v) { setState(() => showName = v); notificationOptions(); },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('D-day 표시'),
+                value: showDday,
+                onChanged: (v) { setState(() => showDday = v); notificationOptions(); },
+              ),
+              DropdownButtonFormField<String>(
+                initialValue: emoji,
+                decoration: const InputDecoration(labelText: '알림 이모지'),
+                items: const ['✈️', '🧳', '🌴', '🌏'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                onChanged: (v) { if (v != null) { setState(() => emoji = v); notificationOptions(); } },
+              ),
+              TextField(
+                controller: customText,
+                maxLength: 80,
+                maxLines: 1,
+                decoration: const InputDecoration(labelText: '알림 문구', hintText: '비워두면 출발일이 표시돼요'),
+                onChanged: (_) => setState(() {}),
+              ),
+              OutlinedButton(onPressed: notificationOptions, child: const Text('알림 문구 저장')),
+              Builder(builder: (context) {
+                final trip = selectedDdayTrip(trips, selected, DateTime.now());
+                final title = [emoji, if (showName) (trip?['name'] as String? ?? '나의 여행'), if (showDday) dDay(trip?['departure'] == null ? null : DateTime.parse(trip!['departure'] as String), DateTime.now())].join(' ');
+                final subtitle = customText.text.trim().isEmpty ? '출발일 표시' : customText.text.trim();
+                return Card(child: ListTile(title: const Text('미리보기 (항목 수는 예시)'), subtitle: Text('$title\n$subtitle${remaining ? ' · 체크리스트 3개 남음' : ''}'), isThreeLine: true));
+              }),
               const Text(
                 '기본값은 OFF입니다. 날짜가 지나면 알림을 종료합니다. Android 버전과 절전 설정에 따라 갱신이 지연되거나 알림을 지울 수 있습니다.',
               ),

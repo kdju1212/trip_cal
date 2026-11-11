@@ -35,9 +35,17 @@ void main() {
       expect(await n.requestPermission(), true);
       await store.setSetting('notificationEnabled', true);
       await store.setSetting('notificationTrip', id);
+      await store.setSetting('notificationShowName', false);
+      await store.setSetting('notificationShowDday', false);
+      await store.setSetting('notificationCustomText', '즐거운 여행');
+      await store.setSetting('notificationEmoji', '🧳');
       await n.sync();
       expect(calls.last.arguments['enabled'], true);
       expect(calls.last.arguments['selected'], id);
+      expect(calls.last.arguments['showName'], false);
+      expect(calls.last.arguments['showDday'], false);
+      expect(calls.last.arguments['customText'], '즐거운 여행');
+      expect(calls.last.arguments['emoji'], '🧳');
       await store.deleteTrip(id);
       await n.sync();
       expect(calls.last.arguments['enabled'], false);

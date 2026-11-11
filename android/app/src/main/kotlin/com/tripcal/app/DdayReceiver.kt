@@ -58,11 +58,19 @@ class DdayReceiver : BroadcastReceiver() {
             val dday = if (days == 0L) "D-Day" else "D-$days"
             val open = Intent(context, MainActivity::class.java).putExtra("tripId", best.getInt("id")).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val content = PendingIntent.getActivity(context, ID, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-            val remaining = if (prefs.getBoolean("showRemaining", true)) " · 준비물 ${best.optInt("remaining")}개 남음" else ""
+            val parts = mutableListOf<String>()
+            val emoji = prefs.getString("emoji", "✈️") ?: "✈️"
+            if (emoji in listOf("✈️", "🧳", "🌴", "🌏")) parts.add(emoji)
+            if (prefs.getBoolean("showName", true)) parts.add(best.optString("name"))
+            if (prefs.getBoolean("showDday", true)) parts.add(dday)
+            val title = parts.joinToString(" ").ifBlank { "여행 준비 도우미" }
+            val custom = prefs.getString("customText", "")?.trim().orEmpty()
+            val detail = mutableListOf(if (custom.isNotEmpty()) custom else "${bestDate.monthValue}월 ${bestDate.dayOfMonth}일 출발")
+            if (prefs.getBoolean("showRemaining", true)) detail.add("체크리스트 ${best.optInt("remaining")}개 남음")
             val notification = NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("${best.optString("flag")} ${best.optString("name")} $dday")
-                .setContentText("${bestDate.monthValue}월 ${bestDate.dayOfMonth}일 출발$remaining")
+                .setContentTitle(title)
+                .setContentText(detail.joinToString(" · "))
                 .setContentIntent(content)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)

@@ -56,6 +56,10 @@ class DdayNotifications {
       'enabled': enabled,
       'selected': await storage.setting('notificationTrip', 0),
       'showRemaining': await storage.setting('notificationRemaining', true),
+      'showName': await storage.setting('notificationShowName', true),
+      'showDday': await storage.setting('notificationShowDday', true),
+      'customText': await storage.setting('notificationCustomText', ''),
+      'emoji': await storage.setting('notificationEmoji', '✈️'),
       'trips': jsonEncode(snapshots),
     });
   }
