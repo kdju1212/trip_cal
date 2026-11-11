@@ -14,7 +14,7 @@
     const response = await fetch(config.url.replace(/\/$/, '') + path, options);
     const text = await response.text(); let body;
     try { body = text ? JSON.parse(text) : null; } catch (_) { body = null; }
-    if (!response.ok) throw new Error(body?.message || body?.error_description || '요청을 처리하지 못했어요.');
+    if (!response.ok) { const error=new Error(body?.message || body?.error_description || '요청을 처리하지 못했어요.'); error.status=response.status; throw error; }
     return body;
   }
   function loggedIn(on) { $('admin-login').hidden = on; $('admin-workspace').hidden = !on; if (on) $('admin-account').textContent = state.session.user.email; }
@@ -104,7 +104,7 @@
       if (!Array.isArray(result) || result.length!==1 || typeof result[0].mfa_required !== 'boolean') throw new Error('보안 상태 오류');
       state.mfaRequired=result[0].mfa_required; applyAdminSecurity();
       if (state.mfaRequired && !state.mfaAal) { $('mfa-message').textContent='관리자 업무를 보려면 2단계 인증을 완료해 주세요.'; return; }
-      await refresh(); await Promise.all([loadWallets(),loadRefunds(),loadAudit()]);
+      await refresh(); await Promise.all([loadWallets(),loadRefunds(),loadAudit(),loadCorrections()]);
     } catch (_) { state.mfaRequired=null; applyAdminSecurity(); $('mfa-message').textContent='관리자 보안 상태를 확인하지 못했어요. 새로고침해 주세요.'; }
   }
   $('mfa-enforce').addEventListener('click', async () => {
@@ -264,6 +264,66 @@
     finally { button.disabled=false; }
   }
   $('refund-refresh').addEventListener('click',loadRefunds);
+  // Keep the same request ID across an uncertain response or a page reload.
+  // The server checks it against the original operation before making changes.
+  const correctionKey='trip_ad_finance_pending_v1';
+  function pendingCorrection() {
+    try { const item=JSON.parse(sessionStorage.getItem(correctionKey) || 'null'); return item && item.user === state.session?.user?.id ? item : null; } catch (_) { return null; }
+  }
+  async function loadCorrections() {
+    const list=$('correction-list');
+    if (!state.session || !state.mfaAal) { list.textContent='관리자 2단계 인증 후 확인할 수 있어요.'; return; }
+    const pending=pendingCorrection(); $('correction-retry').hidden=!pending;
+    if (pending) $('correction-message').textContent='이전 요청의 결과를 먼저 확인해 주세요. 같은 요청 번호로 안전하게 다시 확인합니다.';
+    list.textContent='내역을 불러오고 있어요.';
+    try {
+      const entries=await api('/rest/v1/rpc/list_ad_corrections',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
+      if (!Array.isArray(entries)) throw new Error('invalid response');
+      list.replaceChildren();
+      if (!entries.length) { list.textContent='충전 또는 차감 내역이 없어요.'; return; }
+      for (const entry of entries) {
+        const row=node('div',null,'refund-row'), content=node('div');
+        const remaining=Number(entry.remaining_krw), amount=Number(entry.amount_krw);
+        content.append(node('strong',entry.kind === 'debit' ? '광고 클릭 차감' : '입금 충전'),node('small',`${entry.email || '광고주'} · ${amount.toLocaleString('ko-KR')}원 · ${entry.kind === 'debit' ? '환불 가능' : '취소 가능'} ${remaining.toLocaleString('ko-KR')}원`));
+        row.append(content);
+        if (remaining>0 && !pending) { const button=node('button',entry.kind === 'debit' ? '부분 환불' : '충전 취소','secondary'); button.type='button'; button.addEventListener('click',()=>startCorrection(entry,button)); row.append(button); }
+        else if (remaining<=0) row.append(node('span','처리 완료','status-note'));
+        list.append(row);
+      }
+    } catch (_) { list.textContent='내역을 불러오지 못했어요. 인증과 연결 상태를 확인해 주세요.'; }
+  }
+  async function startCorrection(entry,button) {
+    if (!state.session || !state.mfaAal || pendingCorrection() || button.disabled) return;
+    const amount=entry.kind === 'debit' ? window.prompt(`환불할 금액을 원 단위로 입력해 주세요. 최대 ${Number(entry.remaining_krw).toLocaleString('ko-KR')}원`) : String(entry.amount_krw);
+    if (amount === null) return;
+    if (!/^[0-9]+$/.test(amount) || !Number.isSafeInteger(Number(amount)) || Number(amount)<1 || Number(amount)>Number(entry.remaining_krw)) { $('correction-message').textContent='처리 가능한 금액을 확인해 주세요.'; return; }
+    const reason=window.prompt('처리 사유를 3~100자로 입력해 주세요.');
+    if (reason === null) return;
+    if (reason.trim().length<3 || reason.trim().length>100) { $('correction-message').textContent='사유는 3~100자로 입력해 주세요.'; return; }
+    if (!window.confirm(`${entry.email || '광고주'} · ${Number(amount).toLocaleString('ko-KR')}원\n${entry.kind === 'debit' ? '부분 환불' : '충전 취소'}을 처리할까요?`)) return;
+    const item={user:state.session.user.id,kind:entry.kind,id:entry.entry_id,amount:Number(amount),reason:reason.trim(),request:crypto.randomUUID()};
+    try { sessionStorage.setItem(correctionKey,JSON.stringify(item)); if (!pendingCorrection()) throw new Error('storage'); }
+    catch (_) { $('correction-message').textContent='요청 번호를 안전하게 저장할 수 없어 처리하지 않았어요.'; return; }
+    await sendCorrection(item);
+  }
+  async function sendCorrection(item) {
+    if (!state.session || !state.mfaAal || item.user!==state.session.user.id) return;
+    $('correction-retry').disabled=true; $('correction-message').textContent='처리 결과를 확인하고 있어요.';
+    const debit=item.kind === 'debit';
+    const payload=debit ? {p_debit_id:item.id,p_amount:item.amount,p_request_id:item.request,p_reason:item.reason} : {p_credit_id:item.id,p_request_id:item.request,p_reason:item.reason};
+    try {
+      const result=await api(`/rest/v1/rpc/${debit ? 'partial_ad_click_refund' : 'reverse_ad_topup'}`,{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if (!['refunded','reversed','already_processed','already_reversed'].includes(result)) throw new Error('unknown result');
+      sessionStorage.removeItem(correctionKey); $('correction-message').textContent='처리 결과를 확인했어요.';
+      await Promise.all([loadCorrections(),loadRefunds(),loadWallets()]);
+    } catch (error) {
+      if ([400,403,422].includes(error.status)) { sessionStorage.removeItem(correctionKey); $('correction-retry').hidden=true; $('correction-message').textContent='요청이 거절되어 처리되지 않았어요. 금액과 잔액을 확인해 주세요.'; await loadCorrections(); }
+      else { $('correction-retry').hidden=false; $('correction-message').textContent='처리 결과를 확인하지 못했어요. 같은 요청으로 다시 확인해 주세요.'; }
+    }
+    finally { $('correction-retry').disabled=false; }
+  }
+  $('correction-retry').addEventListener('click',()=>{ const item=pendingCorrection(); if (item) return sendCorrection(item); });
+  $('correction-refresh').addEventListener('click',loadCorrections);
   $('admin-refresh').addEventListener('click', refresh);
   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
     state.filter = button.dataset.filter;

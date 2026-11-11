@@ -16,9 +16,9 @@ function browser(storage, role, loginError = false, fixtures = [], billing = nul
   function el(id) {
     if (!elements.has(id)) elements.set(id, {
       id, hidden: true, textContent: '', value: '', disabled: false, files: [], validity: {valid:true},
-      listeners: {}, dataset:{}, classList:{toggle(){}},
+      listeners: {}, dataset:{}, children:[], classList:{toggle(){}},
       addEventListener(event, callback) { this.listeners[event] = callback; },
-      replaceChildren(){}, append(){}, removeAttribute(){}, setAttribute(){}, reset(){}, showModal(){this.open=true;}, close(){this.open=false;},
+      replaceChildren(...items){this.children=items;}, append(...items){this.children.push(...items);}, removeAttribute(){}, setAttribute(){}, reset(){}, showModal(){this.open=true;}, close(){this.open=false;},
     });
     return elements.get(id);
   }
@@ -26,6 +26,7 @@ function browser(storage, role, loginError = false, fixtures = [], billing = nul
   const config = {url:'https://example.supabase.co',key:'sb_publishable_test'};
   const context = {
     console, URL, URLSearchParams, Date, JSON, Map, Promise, setTimeout, clearTimeout, atob:value=>Buffer.from(value,'base64').toString('binary'),
+    crypto:{randomUUID:()=> '00000000-0000-4000-8000-000000000123'}, prompt:()=>testOptions.prompts?.shift() ?? null, confirm:()=>true,
     location:{search:'', assign(value){responses.push({navigation:value});}},
     sessionStorage, localStorage:{getItem(){return null;},setItem(){}},
     document:{getElementById:el,querySelectorAll(){return [];},createElement(){return el('created-'+Math.random());}},
@@ -51,7 +52,9 @@ function browser(storage, role, loginError = false, fixtures = [], billing = nul
       else if(u.pathname==='/rest/v1/rpc/admin_security_status' && testOptions.failSecurity) return {ok:false,status:503,text:async()=>JSON.stringify({message:'unavailable'})};
       else if(u.pathname==='/rest/v1/rpc/admin_security_status') body = [{mfa_required:!!testOptions.requireMfa}];
       else if(u.pathname==='/rest/v1/rpc/my_ad_costs_exact' && billing !== null) body = billing;
-      else if(u.pathname==='/rest/v1/ad_wallet_entries' || u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/rpc/list_ad_debits_for_refund' || u.pathname==='/rest/v1/rpc/list_ad_action_audit' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs_exact') body = [];
+      else if(u.pathname==='/rest/v1/rpc/list_ad_corrections' && testOptions.correctionFixtures) body=testOptions.correctionFixtures;
+      else if(u.pathname==='/rest/v1/rpc/partial_ad_click_refund' || u.pathname==='/rest/v1/rpc/reverse_ad_topup') body = 'already_processed';
+      else if(u.pathname==='/rest/v1/ad_wallet_entries' || u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/rpc/list_ad_debits_for_refund' || u.pathname==='/rest/v1/rpc/list_ad_corrections' || u.pathname==='/rest/v1/rpc/list_ad_action_audit' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs_exact') body = [];
       else if(u.pathname==='/auth/v1/logout') body = {};
       else throw new Error('Unexpected request '+u.pathname);
       return {ok:true,status:200,text:async()=>JSON.stringify(body)};
@@ -271,4 +274,40 @@ test('2단계 인증이 없는 관리자는 다른 광고주 잔액을 요청하
   vm.runInContext(source('admin.js'),admin.context); await wait();
   assert.ok(!admin.responses.some(r=>r.path==='/rest/v1/rpc/list_advertiser_wallets'));
   assert.equal(admin.el('wallet-submit').disabled,true);
+});
+
+test('결과가 불확실한 환불은 같은 요청 번호로 확인한다', async () => {
+  const storage=new Map(), login=browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const admin=browser(storage,true);
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  await admin.el('mfa-setup').listeners.click(); admin.el('mfa-code').value='123456';
+  await admin.el('mfa-form').listeners.submit({preventDefault(){}});
+  const pending={user:'user-1',kind:'debit',id:'debit-1',amount:30,reason:'테스트 환불',request:'request-1'};
+  storage.set('trip_ad_finance_pending_v1',JSON.stringify(pending));
+  await admin.el('correction-refresh').listeners.click();
+  assert.equal(admin.el('correction-retry').hidden,false);
+  await admin.el('correction-retry').listeners.click();
+  const call=admin.responses.find(r=>r.path==='/rest/v1/rpc/partial_ad_click_refund');
+  assert.equal(JSON.parse(call.body).p_request_id,'request-1');
+  assert.equal(storage.has('trip_ad_finance_pending_v1'),false);
+});
+
+test('관리자 부분 환불은 금액과 사유를 확인한 뒤 요청한다', async () => {
+  const storage=new Map(), login=browser(storage,true);
+  vm.runInContext(source('app.js'),login.context);
+  login.el('email').value='test@example.com'; login.el('password').value='password123';
+  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
+  const options={prompts:['30','테스트 환불'],correctionFixtures:[{entry_id:'debit-1',kind:'debit',email:'owner@example.test',amount_krw:100,remaining_krw:100}]};
+  const admin=browser(storage,true,false,[],null,options);
+  vm.runInContext(source('admin.js'),admin.context); await wait();
+  await admin.el('mfa-setup').listeners.click(); admin.el('mfa-code').value='123456';
+  await admin.el('mfa-form').listeners.submit({preventDefault(){}});
+  const row=admin.el('correction-list').children[0], button=row.children[1];
+  await button.listeners.click();
+  const call=admin.responses.find(r=>r.path==='/rest/v1/rpc/partial_ad_click_refund');
+  assert.deepEqual(JSON.parse(call.body),{p_debit_id:'debit-1',p_amount:30,p_request_id:'00000000-0000-4000-8000-000000000123',p_reason:'테스트 환불'});
+  assert.equal(storage.has('trip_ad_finance_pending_v1'),false);
 });
