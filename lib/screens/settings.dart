@@ -11,6 +11,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const emojiChoices = ['✈️', '🧳', '🌴', '🌏', '🗺️', '🏖️', '🚆', '⛵', '🇰🇷', '🇯🇵', '🇺🇸', '🇹🇭', '🇻🇳', '🇹🇼', '🇫🇷', '🇬🇧'];
   bool enabled = false, remaining = true, busy = false, loaded = false;
   bool showName = true, showDday = true;
   String emoji = '✈️';
@@ -203,11 +204,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: showDday,
                 onChanged: (v) { setState(() => showDday = v); notificationOptions(); },
               ),
-              const Text('알림 이모지 선택'),
-              Wrap(spacing: 6, children: [
-                for (final value in const ['✈️', '🧳', '🌴', '🌏', '🗺️', '🏖️', '🚆', '⛵', '🇰🇷', '🇯🇵', '🇺🇸', '🇹🇭', '🇻🇳', '🇹🇼', '🇫🇷', '🇬🇧'])
-                  ActionChip(label: Text(value), onPressed: () { setState(() { emoji = value; emojiText.text = value; }); notificationOptions(); }),
-              ]),
+              DropdownButtonFormField<String>(
+                key: ValueKey(emoji),
+                initialValue: emojiChoices.contains(emoji) ? emoji : null,
+                hint: const Text('이모지 선택 또는 직접 입력'),
+                decoration: const InputDecoration(labelText: '알림 이모지 선택'),
+                items: emojiChoices.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() { emoji = value; emojiText.text = value; });
+                    notificationOptions();
+                  }
+                },
+              ),
               TextField(
                 controller: emojiText,
                 maxLength: 1,
