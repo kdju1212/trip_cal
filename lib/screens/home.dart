@@ -14,7 +14,8 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  late Future<(List<DbRow>, int)> data;
+  late Future<(List<DbRow>, int, bool)> data;
+  bool notificationBusy = false;
   @override
   void initState() {
     super.initState();
@@ -29,9 +30,10 @@ class _HomeState extends State<Home> {
     }
   }
 
-  Future<(List<DbRow>, int)> load() async {
+  Future<(List<DbRow>, int, bool)> load() async {
     final trips = await widget.app.store.trips();
     final selected = await widget.app.store.setting('notificationTrip', 0);
+    final enabled = await widget.app.store.setting('notificationEnabled', false);
     final result = <DbRow>[];
     for (final trip in trips) {
       final expenses = await widget.app.store.expenses(trip['id']! as int);
@@ -41,7 +43,29 @@ class _HomeState extends State<Home> {
             BigInt.parse(trip['budget']! as String) - totalWon(expenses),
       });
     }
-    return (result, selected);
+    return (result, selected, enabled);
+  }
+
+  Future<void> setTripNotification(DbRow trip, bool value) async {
+    if (notificationBusy) return;
+    if (value && !notificationEligible(trip, DateTime.now())) {
+      message(context, '오늘 이후의 출발일이 있는 여행에 알림을 설정할 수 있어요.');
+      return;
+    }
+    setState(() => notificationBusy = true);
+    await guarded(context, () async {
+      if (value && !await widget.app.notifications.requestPermission()) {
+        if (mounted) message(context, '알림 권한이 필요해요. 기기 설정에서 허용해 주세요.');
+        return;
+      }
+      if (value) {
+        await widget.app.store.setSetting('notificationTrip', trip['id']! as int);
+      }
+      await widget.app.store.setSetting('notificationEnabled', value);
+      await widget.app.notifications.sync();
+      if (mounted) reload();
+    });
+    if (mounted) setState(() => notificationBusy = false);
   }
 
   @override
@@ -76,7 +100,7 @@ class _HomeState extends State<Home> {
       icon: const Icon(Icons.add),
       label: const Text('새 여행'),
     ),
-    body: FutureBuilder<(List<DbRow>, int)>(
+    body: FutureBuilder<(List<DbRow>, int, bool)>(
       future: data,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -90,7 +114,7 @@ class _HomeState extends State<Home> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final (trips, selectedId) = snapshot.data!;
+        final (trips, selectedId, notificationEnabled) = snapshot.data!;
         final featured = selectedDdayTrip(trips, selectedId, DateTime.now());
         return RefreshIndicator(
           onRefresh: () async {
@@ -215,6 +239,19 @@ class _HomeState extends State<Home> {
                                     ? Theme.of(context).colorScheme.error
                                     : Theme.of(context).colorScheme.primary,
                               ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                const Text('고정알림'),
+                                Switch(
+                                  value: notificationEnabled && featured?['id'] == t['id'],
+                                  onChanged: notificationBusy || !widget.app.notifications.supported
+                                      ? null
+                                      : (value) => setTripNotification(t, value),
+                                ),
+                              ],
                             ),
                           ],
                         ),
