@@ -46,6 +46,9 @@ void main() {
       expect(calls.last.arguments['showDday'], false);
       expect(calls.last.arguments['customText'], '즐거운 여행');
       expect(calls.last.arguments['emoji'], '🧳');
+      await store.setSetting('notificationEmoji', '🇯🇵');
+      await n.sync();
+      expect(calls.last.arguments['emoji'], '🇯🇵');
       await store.deleteTrip(id);
       await n.sync();
       expect(calls.last.arguments['enabled'], false);

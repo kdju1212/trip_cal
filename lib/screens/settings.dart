@@ -15,6 +15,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool showName = true, showDday = true;
   String emoji = '✈️';
   final customText = TextEditingController();
+  final emojiText = TextEditingController();
   int selected = 0;
   List<DbRow> trips = [];
   @override
@@ -43,7 +44,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           selected = list.any((e) => e['id'] == t) ? t : 0;
           showName = name;
           showDday = dday;
-          emoji = ['✈️', '🧳', '🌴', '🌏'].contains(savedEmoji) ? savedEmoji : '✈️';
+          emoji = savedEmoji;
+          emojiText.text = savedEmoji;
           customText.text = text;
           trips = list;
           loaded = true;
@@ -59,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     customText.dispose();
+    emojiText.dispose();
     super.dispose();
   }
 
@@ -200,11 +203,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: showDday,
                 onChanged: (v) { setState(() => showDday = v); notificationOptions(); },
               ),
-              DropdownButtonFormField<String>(
-                initialValue: emoji,
-                decoration: const InputDecoration(labelText: '알림 이모지'),
-                items: const ['✈️', '🧳', '🌴', '🌏'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                onChanged: (v) { if (v != null) { setState(() => emoji = v); notificationOptions(); } },
+              const Text('알림 이모지 선택'),
+              Wrap(spacing: 6, children: [
+                for (final value in const ['✈️', '🧳', '🌴', '🌏', '🗺️', '🏖️', '🚆', '⛵', '🇰🇷', '🇯🇵', '🇺🇸', '🇹🇭', '🇻🇳', '🇹🇼', '🇫🇷', '🇬🇧'])
+                  ActionChip(label: Text(value), onPressed: () { setState(() { emoji = value; emojiText.text = value; }); notificationOptions(); }),
+              ]),
+              TextField(
+                controller: emojiText,
+                maxLength: 1,
+                maxLines: 1,
+                decoration: const InputDecoration(labelText: '이모지 직접 입력', hintText: '키보드에서 이모지나 국기를 입력하세요'),
+                onChanged: (value) => setState(() => emoji = value.trim()),
               ),
               TextField(
                 controller: customText,
@@ -213,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: const InputDecoration(labelText: '알림 문구', hintText: '비워두면 출발일이 표시돼요'),
                 onChanged: (_) => setState(() {}),
               ),
-              OutlinedButton(onPressed: notificationOptions, child: const Text('알림 문구 저장')),
+              OutlinedButton(onPressed: notificationOptions, child: const Text('이모지와 알림 문구 저장')),
               Builder(builder: (context) {
                 final trip = selectedDdayTrip(trips, selected, DateTime.now());
                 final title = [emoji, if (showName) (trip?['name'] as String? ?? '나의 여행'), if (showDday) dDay(trip?['departure'] == null ? null : DateTime.parse(trip!['departure'] as String), DateTime.now())].join(' ');

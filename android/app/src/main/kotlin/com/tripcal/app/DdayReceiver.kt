@@ -60,7 +60,7 @@ class DdayReceiver : BroadcastReceiver() {
             val content = PendingIntent.getActivity(context, ID, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val parts = mutableListOf<String>()
             val emoji = prefs.getString("emoji", "✈️") ?: "✈️"
-            if (emoji in listOf("✈️", "🧳", "🌴", "🌏")) parts.add(emoji)
+            if (emoji.isNotBlank()) parts.add(emoji)
             if (prefs.getBoolean("showName", true)) parts.add(best.optString("name"))
             if (prefs.getBoolean("showDday", true)) parts.add(dday)
             val title = parts.joinToString(" ").ifBlank { "여행 준비 도우미" }

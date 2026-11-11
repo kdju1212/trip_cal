@@ -209,7 +209,8 @@ class _HomeState extends State<Home> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Wrap(
+                            Row(children: [
+                              Expanded(child: Wrap(
                               spacing: 8,
                               runSpacing: 4,
                               children: [
@@ -227,7 +228,15 @@ class _HomeState extends State<Home> {
                                   ),
                                 ),
                               ],
-                            ),
+                            )),
+                              const Text('고정알림'),
+                              Switch(
+                                value: notificationEnabled && featured?['id'] == t['id'],
+                                onChanged: notificationBusy || !widget.app.notifications.supported
+                                    ? null
+                                    : (value) => setTripNotification(t, value),
+                              ),
+                            ]),
                             const SizedBox(height: 12),
                             Text(
                               remaining.isNegative
@@ -239,19 +248,6 @@ class _HomeState extends State<Home> {
                                     ? Theme.of(context).colorScheme.error
                                     : Theme.of(context).colorScheme.primary,
                               ),
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              mainAxisSize: MainAxisSize.max,
-                              children: [
-                                const Text('고정알림'),
-                                Switch(
-                                  value: notificationEnabled && featured?['id'] == t['id'],
-                                  onChanged: notificationBusy || !widget.app.notifications.supported
-                                      ? null
-                                      : (value) => setTripNotification(t, value),
-                                ),
-                              ],
                             ),
                           ],
                         ),
