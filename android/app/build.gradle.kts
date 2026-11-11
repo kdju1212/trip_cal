@@ -32,9 +32,9 @@ android {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.tripcal.app"
         if (sideBySide) {
-            applicationIdSuffix = ".preview21"
+            applicationIdSuffix = ".preview22"
         }
-        manifestPlaceholders["appLabel"] = if (sideBySide) "여행 준비 도우미 (수정 21)" else "여행 준비 도우미"
+        manifestPlaceholders["appLabel"] = if (sideBySide) "여행 준비 도우미 (수정 22)" else "여행 준비 도우미"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../controller.dart';
 import '../domain.dart';
@@ -16,6 +17,45 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   late Future<(List<DbRow>, int, bool)> data;
   bool notificationBusy = false;
+  OverlayEntry? settingsTip;
+  Timer? settingsTipTimer;
+
+  void hideSettingsTip() {
+    settingsTipTimer?.cancel();
+    settingsTip?.remove();
+    settingsTip = null;
+  }
+
+  void showSettingsTip() {
+    hideSettingsTip();
+    final top = MediaQuery.paddingOf(context).top + kToolbarHeight + 4;
+    settingsTip = OverlayEntry(builder: (context) => Positioned(
+      top: top,
+      right: 16,
+      left: 48,
+      child: IgnorePointer(child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutBack,
+        builder: (context, value, child) => Transform.translate(
+          offset: Offset(0, -8 * (1 - value)),
+          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+        ),
+        child: Material(
+          color: Theme.of(context).colorScheme.inverseSurface,
+          borderRadius: BorderRadius.circular(16),
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text('오른쪽 위 설정에서 고정알림을 꾸밀 수 있어요',
+              style: TextStyle(color: Theme.of(context).colorScheme.onInverseSurface)),
+          ),
+        ),
+      )),
+    ));
+    Overlay.of(context).insert(settingsTip!);
+    settingsTipTimer = Timer(const Duration(seconds: 2), hideSettingsTip);
+  }
   @override
   void initState() {
     super.initState();
@@ -63,13 +103,18 @@ class _HomeState extends State<Home> {
       }
       await widget.app.store.setSetting('notificationEnabled', value);
       await widget.app.notifications.sync();
-      if (mounted) reload();
+      if (mounted) {
+        reload();
+        if (value) showSettingsTip();
+        else hideSettingsTip();
+      }
     });
     if (mounted) setState(() => notificationBusy = false);
   }
 
   @override
   void dispose() {
+    hideSettingsTip();
     widget.app.removeListener(reload);
     super.dispose();
   }
