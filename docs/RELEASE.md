@@ -17,7 +17,7 @@ keytool -genkeypair -v -keystore C:\secure\trip-cal-upload.jks -keyalg RSA -keys
 flutter build appbundle --release --no-shrink
 ```
 
-광고 없이 출시하는 첫 버전은 `--dart-define=SUPABASE_URL`과 `SUPABASE_ANON_KEY`를 **넣지 않고** 빌드합니다. 이 값이 있으면 유심·eSIM 화면을 열 때 앱이 광고 서버에 접속하는데, `docs/PRIVACY.md`의 "운영자는 개인정보를 수집하지 않습니다"와 맞지 않게 됩니다(CI 테스트 APK에는 이 값이 들어 있습니다). 광고를 켜려면 방침의 "광고 기능을 켤 때 추가할 내용"을 먼저 반영하세요.
+광고 없이 출시하는 첫 버전은 `--dart-define=SUPABASE_URL`과 `SUPABASE_ANON_KEY`를 **넣지 않고** 빌드합니다. 이 값이 있으면 유심·eSIM 화면을 열 때 앱이 광고 서버에 접속하는데, `docs/PRIVACY.md`의 "운영자는 개인정보를 수집하지 않습니다"와 맞지 않게 됩니다(CI 테스트 APK에는 이 값이 들어 있습니다). 광고를 켜려면 방침의 "광고 기능을 켤 때 추가할 내용"을 먼저 반영하세요. 실수를 막기 위해 이 값이 들어간 출시 AAB는 Gradle이 빌드를 거부합니다. 광고를 켜는 출시에서만 `ORG_GRADLE_PROJECT_allowAds=true`(또는 `-PallowAds=true`)로 허용합니다.
 
 결과: `build/app/outputs/bundle/release/app-release.aab`. 키 설정이 없으면 정식 AAB 빌드는 중단됩니다. 테스트용 릴리스 APK는 debug 서명을 사용할 수 있으므로 배포하면 안 됩니다. 업로드 전 `jarsigner -verify -verbose -certs` 등으로 실제 서명을 확인하세요. Play App Signing 사용과 키 백업/보관 책임을 정하세요.
 
@@ -31,7 +31,7 @@ flutter build appbundle --release --no-shrink
 - 앱 아이콘과 스토어 스크린샷을 제작합니다. 현재 아이콘은 Flutter 템플릿 기본 아이콘으로 출시 전 교체해야 합니다.
 - 내부/비공개 테스트 및 계정별 Play 테스트 요구사항을 완료하고 사용자가 게시를 승인한 뒤 제출합니다.
 
-릴리스 코드 축소는 WorkManager 데이터베이스 생성자가 제거되어 앱이 시작할 때 종료되는 문제를 방지하기 위해 비활성화했습니다. 최적화 설정을 변경하는 경우 반드시 실제 릴리스 APK의 시작을 Android 기기에서 다시 검증하세요.
+릴리스 코드 축소는 WorkManager 데이터베이스 생성자가 제거되어 앱이 시작할 때 종료되는 문제를 방지하기 위해 비활성화했습니다. 최적화 설정을 변경하는 경우 반드시 실제 릴리스 APK의 시작을 Android 기기에서 다시 검증하세요. 코드 축소(R8)가 실행되려 하면 Gradle이 빌드를 멈추고 이유를 알려 줍니다. CI는 `scripts/check_release_guards.sh`로 이 검사와 광고 설정 검사가 실제로 동작하는지 확인합니다. 코드 축소를 다시 쓰려면 WorkManager 유지 규칙을 추가하고 이 검사를 함께 고친 뒤 실제 기기에서 시작을 검증하세요.
 
 ## 무료 광고 시험 운영 준비
 

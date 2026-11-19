@@ -96,6 +96,8 @@ jobs:
           path: build/app/outputs/flutter-apk/app-x86_64-release.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Release build guards reject unsafe builds
+        run: bash scripts/check_release_guards.sh
   emulator_startup:
     needs: build
     strategy:
