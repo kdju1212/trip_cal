@@ -17,6 +17,8 @@ keytool -genkeypair -v -keystore C:\secure\trip-cal-upload.jks -keyalg RSA -keys
 flutter build appbundle --release --no-shrink
 ```
 
+광고 없이 출시하는 첫 버전은 `--dart-define=SUPABASE_URL`과 `SUPABASE_ANON_KEY`를 **넣지 않고** 빌드합니다. 이 값이 있으면 유심·eSIM 화면을 열 때 앱이 광고 서버에 접속하는데, `docs/PRIVACY.md`의 "운영자는 개인정보를 수집하지 않습니다"와 맞지 않게 됩니다(CI 테스트 APK에는 이 값이 들어 있습니다). 광고를 켜려면 방침의 "광고 기능을 켤 때 추가할 내용"을 먼저 반영하세요.
+
 결과: `build/app/outputs/bundle/release/app-release.aab`. 키 설정이 없으면 정식 AAB 빌드는 중단됩니다. 테스트용 릴리스 APK는 debug 서명을 사용할 수 있으므로 배포하면 안 됩니다. 업로드 전 `jarsigner -verify -verbose -certs` 등으로 실제 서명을 확인하세요. Play App Signing 사용과 키 백업/보관 책임을 정하세요.
 
 ## Play 제출 전 남은 작업
