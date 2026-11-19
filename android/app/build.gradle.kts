@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -25,7 +26,7 @@ val allowAds = providers.gradleProperty("allowAds").orNull == "true"
 val adServerDefines = providers.gradleProperty("dart-defines").orNull.orEmpty()
     .split(",")
     .filter { it.isNotBlank() }
-    .map { entry -> runCatching { String(java.util.Base64.getDecoder().decode(entry), Charsets.UTF_8) }.getOrDefault("") }
+    .map { entry -> runCatching { String(Base64.getDecoder().decode(entry), Charsets.UTF_8) }.getOrDefault("") }
     .filter { define -> listOf("SUPABASE_URL=", "SUPABASE_ANON_KEY=").any { define.startsWith(it) && define.length > it.length } }
 if (!allowAds && adServerDefines.isNotEmpty() && gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) && it.contains("release", ignoreCase = true) }) {
     throw GradleException(
