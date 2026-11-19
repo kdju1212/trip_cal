@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>광고 관리 · 여행 준비 도우미</title><link rel="stylesheet" href="style.css"></head>
+<body><main>
+  <nav class="top-nav"><a href="index.html">광고주 센터</a><a class="active" href="admin.html">관리자 센터</a></nav>
+  <header><span class="eyebrow">여행 준비 도우미</span><h1>광고 관리</h1><p>접수된 광고를 검토하고 앱 노출을 관리하세요.</p></header>
+  <section class="panel" id="admin-login"><h2 id="admin-login-title">로그인 확인 중</h2><p id="admin-login-help">잠시만 기다려 주세요.</p><a href="index.html" id="unified-login" hidden>통합 로그인으로 이동</a></section>
+  <div id="admin-workspace" hidden><div class="workspace-bar"><span id="admin-account"></span><button id="admin-logout" class="link" type="button">로그아웃</button></div>
+    <section class="panel mfa-panel" id="mfa-panel"><h2>관리자 2단계 인증</h2><p id="mfa-help">인증 상태를 확인하고 있어요.</p>
+      <button id="mfa-setup" class="secondary" type="button" hidden>인증 앱 설정</button><button id="mfa-enforce" class="secondary" type="button" hidden>관리자 2단계 인증 필수로 설정</button><button id="mfa-challenge" class="secondary" type="button" hidden>인증번호 입력</button>
+      <div id="mfa-secret-section" hidden><p>인증 앱에서 계정을 추가하고 아래 설정 키를 직접 입력하세요. 이 키는 다른 사람에게 공유하지 마세요. 휴대폰을 잃어버려도 인증 앱 계정을 복구할 수 있도록 인증 앱의 복구 방법을 먼저 확인하세요.</p><label>설정 키<input id="mfa-secret" readonly autocomplete="off"></label><button id="mfa-copy" type="button" class="link">키 복사</button></div>
+      <form id="mfa-form" hidden><label>인증 앱의 6자리 번호<input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button id="mfa-verify" type="submit">인증 확인</button><button id="mfa-cancel" class="secondary" type="button">취소</button></form><p id="mfa-message" role="status" aria-live="polite"></p>
+    </section>
+    <div id="admin-operations" hidden>
+    <div class="admin-layout"><section class="panel"><div class="review-head"><div><h2>광고 검수</h2><p>내용과 구매 링크를 확인한 후 승인하거나 반려해 주세요.</p></div><button class="link" id="admin-refresh" type="button">새로고침</button></div><div class="filter" role="group" aria-label="광고 상태"><button data-filter="pending" class="active" type="button">검토 대기</button><button data-filter="approved" type="button">승인</button><button data-filter="rejected" type="button">반려</button></div><div id="review-list" aria-live="polite"></div></section>
+      <aside class="panel admin-summary"><h2>검수 현황</h2><div class="summary-number" id="pending-count">0</div><div class="summary-label">검토 대기</div><div class="summary-number" id="approved-count">0</div><div class="summary-label">승인된 요청</div><p class="status-note">광고를 승인하면 조건에 맞는 유심·eSIM 화면에 표시됩니다.</p></aside></div>
+    <section class="panel wallet-panel"><div class="review-head"><div><h2>광고주 잔액 관리</h2><p id="wallet-help">과금 준비 상태를 확인하고 있어요.</p></div><button id="wallet-refresh" class="link" type="button">새로고침</button></div>
+      <form id="wallet-form"><label>광고주<select id="wallet-owner" required disabled><option value="">광고주 선택</option></select></label><label>입금 확인 금액 (원)<input id="wallet-amount" type="number" min="1" max="1000000000" required disabled></label><label>입금 거래 고유번호<input id="wallet-reference" maxlength="80" required disabled placeholder="중복 충전 방지를 위한 거래 번호"></label><button id="wallet-submit" type="submit" disabled>입금 확인 후 충전</button></form><p id="wallet-message" role="status" aria-live="polite"></p>
+    </section>
+    <section class="panel audit-panel"><div class="review-head"><div><h2>광고 변경 이력</h2><p>최근 100건 · 2단계 인증 후 확인</p></div><button id="audit-refresh" class="link" type="button">새로고침</button></div><div id="audit-list" aria-live="polite">관리자 2단계 인증 후 확인할 수 있어요.</div></section>
+    <section class="panel refund-panel" hidden><div class="review-head"><div><h2>광고 클릭 환불</h2><p>차감 내역을 확인하고 잘못 청구된 클릭을 환불합니다. 최근 100건</p></div><button id="refund-refresh" class="link" type="button">새로고침</button></div><div id="refund-list" aria-live="polite">관리자 2단계 인증 후 확인할 수 있어요.</div><p id="refund-message" role="status" aria-live="polite"></p></section>
+    <section class="panel refund-panel"><div class="review-head"><div><h2>부분 환불·충전 취소</h2><p>최근 100건 · 충전 취소는 잔액이 충분할 때 전액 취소합니다.</p></div><button id="correction-refresh" class="link" type="button">새로고침</button></div><div id="correction-list" aria-live="polite">관리자 2단계 인증 후 확인할 수 있어요.</div><button id="correction-retry" class="secondary" type="button" hidden>처리 결과 다시 확인</button><p id="correction-message" role="status" aria-live="polite"></p></section>
+    </div>
+  </div>
+  <p id="admin-message" role="status" aria-live="polite"></p><footer>광고주 입력 정보와 판매 조건을 확인한 후 승인해 주세요.</footer>
+</main><script src="config.js" defer></script><script src="session.js" defer></script><script src="image-ratio.js" defer></script><script src="admin.js" defer></script></body></html>

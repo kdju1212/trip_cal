@@ -1,0 +1,138 @@
+diff --git a/advertiser/admin.html b/advertiser/admin.html
+index 494fc34..109caba 100644
+--- a/advertiser/admin.html
++++ b/advertiser/admin.html
+@@ -18,6 +18,7 @@
+     </section>
+     <section class="panel audit-panel"><div class="review-head"><div><h2>광고 변경 이력</h2><p>최근 100건 · 2단계 인증 후 확인</p></div><button id="audit-refresh" class="link" type="button">새로고침</button></div><div id="audit-list" aria-live="polite">관리자 2단계 인증 후 확인할 수 있어요.</div></section>
+     <section class="panel refund-panel"><div class="review-head"><div><h2>광고 클릭 환불</h2><p>차감 내역을 확인하고 잘못 청구된 클릭을 환불합니다. 최근 100건</p></div><button id="refund-refresh" class="link" type="button">새로고침</button></div><div id="refund-list" aria-live="polite">관리자 2단계 인증 후 확인할 수 있어요.</div><p id="refund-message" role="status" aria-live="polite"></p></section>
++    <section class="panel refund-panel"><div class="review-head"><div><h2>부분 환불·충전 취소</h2><p>최근 100건 · 충전 취소는 잔액이 충분할 때 전액 취소합니다.</p></div><button id="correction-refresh" class="link" type="button">새로고침</button></div><div id="correction-list" aria-live="polite">관리자 2단계 인증 후 확인할 수 있어요.</div><button id="correction-retry" class="secondary" type="button" hidden>처리 결과 다시 확인</button><p id="correction-message" role="status" aria-live="polite"></p></section>
+     </div>
+   </div>
+   <p id="admin-message" role="status" aria-live="polite"></p><footer>광고주 입력 정보와 판매 조건을 확인한 후 승인해 주세요.</footer>
+diff --git a/advertiser/admin.js b/advertiser/admin.js
+index c624e75..c805f16 100644
+--- a/advertiser/admin.js
++++ b/advertiser/admin.js
+@@ -14,7 +14,7 @@
+     const response = await fetch(config.url.replace(/\/$/, '') + path, options);
+     const text = await response.text(); let body;
+     try { body = text ? JSON.parse(text) : null; } catch (_) { body = null; }
+-    if (!response.ok) throw new Error(body?.message || body?.error_description || '요청을 처리하지 못했어요.');
++    if (!response.ok) { const error=new Error(body?.message || body?.error_description || '요청을 처리하지 못했어요.'); error.status=response.status; throw error; }
+     return body;
+   }
+   function loggedIn(on) { $('admin-login').hidden = on; $('admin-workspace').hidden = !on; if (on) $('admin-account').textContent = state.session.user.email; }
+@@ -104,7 +104,7 @@
+       if (!Array.isArray(result) || result.length!==1 || typeof result[0].mfa_required !== 'boolean') throw new Error('보안 상태 오류');
+       state.mfaRequired=result[0].mfa_required; applyAdminSecurity();
+       if (state.mfaRequired && !state.mfaAal) { $('mfa-message').textContent='관리자 업무를 보려면 2단계 인증을 완료해 주세요.'; return; }
+-      await refresh(); await Promise.all([loadWallets(),loadRefunds(),loadAudit()]);
++      await refresh(); await Promise.all([loadWallets(),loadRefunds(),loadAudit(),loadCorrections()]);
+     } catch (_) { state.mfaRequired=null; applyAdminSecurity(); $('mfa-message').textContent='관리자 보안 상태를 확인하지 못했어요. 새로고침해 주세요.'; }
+   }
+   $('mfa-enforce').addEventListener('click', async () => {
+@@ -264,6 +264,66 @@
+     finally { button.disabled=false; }
+   }
+   $('refund-refresh').addEventListener('click',loadRefunds);
++  // Keep the same request ID across an uncertain response or a page reload.
++  // The server checks it against the original operation before making changes.
++  const correctionKey='trip_ad_finance_pending_v1';
++  function pendingCorrection() {
++    try { const item=JSON.parse(sessionStorage.getItem(correctionKey) || 'null'); return item && item.user === state.session?.user?.id ? item : null; } catch (_) { return null; }
++  }
++  async function loadCorrections() {
++    const list=$('correction-list');
++    if (!state.session || !state.mfaAal) { list.textContent='관리자 2단계 인증 후 확인할 수 있어요.'; return; }
++    const pending=pendingCorrection(); $('correction-retry').hidden=!pending;
++    if (pending) $('correction-message').textContent='이전 요청의 결과를 먼저 확인해 주세요. 같은 요청 번호로 안전하게 다시 확인합니다.';
++    list.textContent='내역을 불러오고 있어요.';
++    try {
++      const entries=await api('/rest/v1/rpc/list_ad_corrections',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:'{}'});
++      if (!Array.isArray(entries)) throw new Error('invalid response');
++      list.replaceChildren();
++      if (!entries.length) { list.textContent='충전 또는 차감 내역이 없어요.'; return; }
++      for (const entry of entries) {
++        const row=node('div',null,'refund-row'), content=node('div');
++        const remaining=Number(entry.remaining_krw), amount=Number(entry.amount_krw);
++        content.append(node('strong',entry.kind === 'debit' ? '광고 클릭 차감' : '입금 충전'),node('small',`${entry.email || '광고주'} · ${amount.toLocaleString('ko-KR')}원 · ${entry.kind === 'debit' ? '환불 가능' : '취소 가능'} ${remaining.toLocaleString('ko-KR')}원`));
++        row.append(content);
++        if (remaining>0 && !pending) { const button=node('button',entry.kind === 'debit' ? '부분 환불' : '충전 취소','secondary'); button.type='button'; button.addEventListener('click',()=>startCorrection(entry,button)); row.append(button); }
++        else if (remaining<=0) row.append(node('span','처리 완료','status-note'));
++        list.append(row);
++      }
++    } catch (_) { list.textContent='내역을 불러오지 못했어요. 인증과 연결 상태를 확인해 주세요.'; }
++  }
++  async function startCorrection(entry,button) {
++    if (!state.session || !state.mfaAal || pendingCorrection() || button.disabled) return;
++    const amount=entry.kind === 'debit' ? window.prompt(`환불할 금액을 원 단위로 입력해 주세요. 최대 ${Number(entry.remaining_krw).toLocaleString('ko-KR')}원`) : String(entry.amount_krw);
++    if (amount === null) return;
++    if (!/^[0-9]+$/.test(amount) || !Number.isSafeInteger(Number(amount)) || Number(amount)<1 || Number(amount)>Number(entry.remaining_krw)) { $('correction-message').textContent='처리 가능한 금액을 확인해 주세요.'; return; }
++    const reason=window.prompt('처리 사유를 3~100자로 입력해 주세요.');
++    if (reason === null) return;
++    if (reason.trim().length<3 || reason.trim().length>100) { $('correction-message').textContent='사유는 3~100자로 입력해 주세요.'; return; }
++    if (!window.confirm(`${entry.email || '광고주'} · ${Number(amount).toLocaleString('ko-KR')}원\n${entry.kind === 'debit' ? '부분 환불' : '충전 취소'}을 처리할까요?`)) return;
++    const item={user:state.session.user.id,kind:entry.kind,id:entry.entry_id,amount:Number(amount),reason:reason.trim(),request:crypto.randomUUID()};
++    try { sessionStorage.setItem(correctionKey,JSON.stringify(item)); if (!pendingCorrection()) throw new Error('storage'); }
++    catch (_) { $('correction-message').textContent='요청 번호를 안전하게 저장할 수 없어 처리하지 않았어요.'; return; }
++    await sendCorrection(item);
++  }
++  async function sendCorrection(item) {
++    if (!state.session || !state.mfaAal || item.user!==state.session.user.id) return;
++    $('correction-retry').disabled=true; $('correction-message').textContent='처리 결과를 확인하고 있어요.';
++    const debit=item.kind === 'debit';
++    const payload=debit ? {p_debit_id:item.id,p_amount:item.amount,p_request_id:item.request,p_reason:item.reason} : {p_credit_id:item.id,p_request_id:item.request,p_reason:item.reason};
++    try {
++      const result=await api(`/rest/v1/rpc/${debit ? 'partial_ad_click_refund' : 'reverse_ad_topup'}`,{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify(payload)});
++      if (!['refunded','reversed','already_processed','already_reversed'].includes(result)) throw new Error('unknown result');
++      sessionStorage.removeItem(correctionKey); $('correction-message').textContent='처리 결과를 확인했어요.';
++      await Promise.all([loadCorrections(),loadRefunds(),loadWallets()]);
++    } catch (error) {
++      if ([400,403,422].includes(error.status)) { sessionStorage.removeItem(correctionKey); $('correction-retry').hidden=true; $('correction-message').textContent='요청이 거절되어 처리되지 않았어요. 금액과 잔액을 확인해 주세요.'; await loadCorrections(); }
++      else { $('correction-retry').hidden=false; $('correction-message').textContent='처리 결과를 확인하지 못했어요. 같은 요청으로 다시 확인해 주세요.'; }
++    }
++    finally { $('correction-retry').disabled=false; }
++  }
++  $('correction-retry').addEventListener('click',()=>{ const item=pendingCorrection(); if (item) return sendCorrection(item); });
++  $('correction-refresh').addEventListener('click',loadCorrections);
+   $('admin-refresh').addEventListener('click', refresh);
+   document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
+     state.filter = button.dataset.filter;
+diff --git a/test/dashboard_login.test.cjs b/test/dashboard_login.test.cjs
+index fd8e7e7..871926c 100644
+--- a/test/dashboard_login.test.cjs
++++ b/test/dashboard_login.test.cjs
+@@ -51,7 +51,8 @@ function browser(storage, role, loginError = false, fixtures = [], billing = nul
+       else if(u.pathname==='/rest/v1/rpc/admin_security_status' && testOptions.failSecurity) return {ok:false,status:503,text:async()=>JSON.stringify({message:'unavailable'})};
+       else if(u.pathname==='/rest/v1/rpc/admin_security_status') body = [{mfa_required:!!testOptions.requireMfa}];
+       else if(u.pathname==='/rest/v1/rpc/my_ad_costs_exact' && billing !== null) body = billing;
+-      else if(u.pathname==='/rest/v1/ad_wallet_entries' || u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/rpc/list_ad_debits_for_refund' || u.pathname==='/rest/v1/rpc/list_ad_action_audit' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs_exact') body = [];
++      else if(u.pathname==='/rest/v1/rpc/partial_ad_click_refund' || u.pathname==='/rest/v1/rpc/reverse_ad_topup') body = 'already_processed';
++      else if(u.pathname==='/rest/v1/ad_wallet_entries' || u.pathname==='/rest/v1/ad_wallets' || u.pathname==='/rest/v1/rpc/list_advertiser_wallets' || u.pathname==='/rest/v1/rpc/list_ad_debits_for_refund' || u.pathname==='/rest/v1/rpc/list_ad_corrections' || u.pathname==='/rest/v1/rpc/list_ad_action_audit' || u.pathname==='/rest/v1/ad_campaigns' || u.pathname==='/rest/v1/ad_groups' || u.pathname==='/rest/v1/rpc/my_ad_performance_breakdown' || u.pathname==='/rest/v1/rpc/my_ad_delivery' || u.pathname==='/rest/v1/rpc/my_ad_costs_exact') body = [];
+       else if(u.pathname==='/auth/v1/logout') body = {};
+       else throw new Error('Unexpected request '+u.pathname);
+       return {ok:true,status:200,text:async()=>JSON.stringify(body)};
+@@ -272,3 +273,22 @@ test('2단계 인증이 없는 관리자는 다른 광고주 잔액을 요청하
+   assert.ok(!admin.responses.some(r=>r.path==='/rest/v1/rpc/list_advertiser_wallets'));
+   assert.equal(admin.el('wallet-submit').disabled,true);
+ });
++
++test('결과가 불확실한 환불은 같은 요청 번호로 확인한다', async () => {
++  const storage=new Map(), login=browser(storage,true);
++  vm.runInContext(source('app.js'),login.context);
++  login.el('email').value='test@example.com'; login.el('password').value='password123';
++  await login.el('auth-form').listeners.submit({preventDefault(){}}); await wait();
++  const admin=browser(storage,true);
++  vm.runInContext(source('admin.js'),admin.context); await wait();
++  await admin.el('mfa-setup').listeners.click(); admin.el('mfa-code').value='123456';
++  await admin.el('mfa-form').listeners.submit({preventDefault(){}});
++  const pending={user:'user-1',kind:'debit',id:'debit-1',amount:30,reason:'테스트 환불',request:'request-1'};
++  storage.set('trip_ad_finance_pending_v1',JSON.stringify(pending));
++  await admin.el('correction-refresh').listeners.click();
++  assert.equal(admin.el('correction-retry').hidden,false);
++  await admin.el('correction-retry').listeners.click();
++  const call=admin.responses.find(r=>r.path==='/rest/v1/rpc/partial_ad_click_refund');
++  assert.equal(JSON.parse(call.body).p_request_id,'request-1');
++  assert.equal(storage.has('trip_ad_finance_pending_v1'),false);
++});
