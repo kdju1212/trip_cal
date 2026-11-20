@@ -28,7 +28,7 @@ flutter build appbundle --release --no-shrink
 - 물리 Android 기기(API 24, 26, 33, 34 이상 포함)에서 알림 권한 거절/허용, 앱 종료·재부팅·자정·시간대 변경·절전·여행 삭제와 만료를 테스트합니다. Ongoing 알림의 해제 불가능성을 보장하지 않습니다. 강제 종료 상태의 백그라운드 동작은 보장하지 않습니다.
 - 오프라인·0예산·큰 금액·큰 글씨·화면 회전·한국어·다크모드를 검증합니다.
 - 판매처/국가 콘텐츠와 공식 출처의 유효성을 다시 확인합니다. 제휴 링크를 추가하면 데이터와 고지 문구를 함께 수정합니다.
-- 스토어 스크린샷을 제작합니다. 앱 아이콘은 `branding/app_icon_source.png`에서 `python3 scripts/generate_app_icons.py`로 만들며, Play 등록정보용 512px 아이콘은 `branding/play_store_icon_512.png`입니다.
+- 스토어 등록정보 문구는 `docs/STORE_LISTING.md`에 있습니다. 스토어 스크린샷을 제작합니다. 앱 아이콘은 `branding/app_icon_source.png`에서 `python3 scripts/generate_app_icons.py`로 만들며, Play 등록정보용 512px 아이콘은 `branding/play_store_icon_512.png`입니다.
 - 내부/비공개 테스트 및 계정별 Play 테스트 요구사항을 완료하고 사용자가 게시를 승인한 뒤 제출합니다.
 
 릴리스 코드 축소는 WorkManager 데이터베이스 생성자가 제거되어 앱이 시작할 때 종료되는 문제를 방지하기 위해 비활성화했습니다. 최적화 설정을 변경하는 경우 반드시 실제 릴리스 APK의 시작을 Android 기기에서 다시 검증하세요. 코드 축소(R8)가 실행되려 하면 Gradle이 빌드를 멈추고 이유를 알려 줍니다. CI는 `scripts/check_release_guards.sh`로 이 검사와 광고 설정 검사가 실제로 동작하는지 확인합니다. 코드 축소를 다시 쓰려면 WorkManager 유지 규칙을 추가하고 이 검사를 함께 고친 뒤 실제 기기에서 시작을 검증하세요.
